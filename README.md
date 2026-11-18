@@ -718,6 +718,7 @@ MCP 协议六环节、批量汇总、完整性篡改检测、伪造签名识别�
 
 | 文件 | 内容 |
 | --- | --- |
+| **[docs/DATA-COOKBOOK.md](docs/DATA-COOKBOOK.md)** | **数据获取手册：按「我要什么」查，照着敲** |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 分层、模块职责、关键决策 |
 | [docs/PLUGIN-AUTHORING.md](docs/PLUGIN-AUTHORING.md) | 三种入口、ctx API、规则语法、调试 |
 | [docs/MCP.md](docs/MCP.md) | MCP 协议、resources、prompts、客户端配置 |

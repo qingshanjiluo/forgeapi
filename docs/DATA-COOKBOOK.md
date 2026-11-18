@@ -1,0 +1,400 @@
+# 数据获取手册
+
+按「我要什么」查，照着敲。每条都实测过。
+
+---
+
+## 一、拿到一个陌生页面
+
+**目标：搞清楚这页有什么，再决定怎么抓。**
+
+```bash
+forge run page-meta -p '{"url":"https://TARGET"}'
+```
+
+输出包含：`title` / `description` / `og.*` / `twitter.*` / `jsonLd[]` /
+`headings[]` / `counts{links,internal,external,images}` / `feeds[]` / `hreflang[]` / `firstParagraph`。
+
+**怎么用这份画像**：
+
+| 看到什么 | 下一步 |
+| --- | --- |
+| `jsonLd` 里有 `Product` / `Article` | 直接从 JSON-LD 取字段，比解析 DOM 稳 |
+| `feeds` 非空 | 改抓 RSS：`forge run rss -p '{"url":"<feed>"}'` |
+| `counts.links` 很多 | 可能是列表页 → 用 `blog-list` |
+| `headings` 扁平、无 `h1` | 结构差，用 `firstParagraph` + 正则兜底 |
+| `hreflang` 有多语言 | 挑一个语言版本作为抓取入口 |
+
+---
+
+## 二、抓单页字段
+
+### 2.1 先用默认规则试
+
+```bash
+forge run webpage -p '{"url":"https://TARGET"}'
+# 返回 title / h1 / description / canonical / links[]
+```
+
+### 2.2 要自定义字段 → 写规则
+
+```bash
+forge rule webpage site --set 'fields:
+  - {name: 标题, selector: "h1"}
+  - {name: 价格, selector: ".price", type: number}
+  - {name: 库存, selector: ".stock", type: text, optional: true}
+  - {name: 图片, selector: ".gallery img", type: list, limit: 10, fields: [
+      {name: 地址, selector: "", type: attr, attr: "src"}
+    ]}'
+forge run webpage -p '{"url":"https://TARGET","rule":"site"}'
+```
+
+### 2.3 选择器四选一
+
+| 写法 | 例子 |
+| --- | --- |
+| CSS | `.product-title` / `div[data-id=5]` |
+| XPath | `//div[@class="price"]/text()` |
+| 正则 | `re:￥([\d,.]+)` |
+| 相对空选择器 | `""` = 当前节点自身（list 子字段常用） |
+
+### 2.4 动态渲染（JS 生成的内容）
+
+```bash
+forge run webpage -p '{"url":"https://TARGET","rule":"site","waitFor":".price"}'
+```
+
+`waitFor` 等到元素出现再提取。还不行就加 `blog-list` 的 `scroll` 触发懒加载。
+
+---
+
+## 三、抓列表页
+
+```bash
+# 默认通用选择器
+forge run blog-list -p '{"url":"https://TARGET/list","limit":20}'
+
+# 精确指定（HN 首页为例）
+forge run blog-list --params-file p.json
+# p.json: {"url":"https://news.ycombinator.com","limit":10,
+#          "item":".athing","title":".titleline a","link":".titleline a"}
+
+# 翻页
+forge run blog-list -p '{"url":"https://TARGET/list","pages":3,"pageParam":"page"}'
+
+# 懒加载列表
+forge run blog-list -p '{"url":"https://TARGET/list","scroll":3}'
+```
+
+返回 `items[]`：`title` / `url` / `summary` / `time` / `page`。
+
+---
+
+## 四、多源搜索
+
+```bash
+# 三源并发（HN + Wikipedia + GitHub）
+forge run search-aggregate -p '{"query":"rust async","sources":"hn,wiki,github","limit":10}'
+
+# 加 Bing 网页来源
+forge run search-aggregate -p '{"query":"X","sources":"hn,wiki,github,bing","limit":5}'
+```
+
+返回按 `score` 降序，`来源` 字段标出来源集合（去重后合并）。
+
+---
+
+## 五、RSS / Atom
+
+```bash
+forge run rss -p '{"url":"https://news.ycombinator.com/rss","limit":10}'
+
+# 多 feed 合并，按时间倒序
+forge run rss -p '{"urls":["https://a/rss","https://b/atom.xml"],"limit":5,"sort":true}'
+```
+
+自动区分 RSS 2.0（`<item>`）与 Atom（`<entry>`），单 feed 失败不影响其它。
+
+---
+
+## 六、GitHub
+
+```bash
+forge run github-repo -p '{"repo":"microsoft/vscode","action":"info"}'
+forge run github-repo -p '{"repo":"microsoft/vscode","action":"issues","state":"open","limit":10}'
+forge run github-repo -p '{"repo":"x","action":"search","query":"language:rust cli"}'
+forge run github-repo -p '{"repo":"microsoft/vscode","action":"readme"}'
+forge run github-repo -p '{"repo":"microsoft/vscode","action":"releases","limit":3}'
+forge run github-repo -p '{"repo":"microsoft/vscode","action":"tree","path":"HEAD"}'
+```
+
+**限流**：未认证 60 次/小时。要提额先配 token：
+
+```bash
+forge config --vault init --password P
+forge config --vault unlock --password P
+forge github-repo set-token -p '{"token":"ghp_xxx"}'
+# 之后每次调用插件会自动读凭据
+```
+
+---
+
+## 七、需要登录的站
+
+```bash
+# 1) 存凭据（一次性）
+forge config --vault init --password P
+forge config --vault set --plugin forum --key USERNAME --value u --password P
+forge config --vault set --plugin forum --key PASSWORD --value p --password P
+
+# 2) 登录（登录态落 cookie，后续自动复用）
+forge run forum -p '{"base":"https://forum.example.com","action":"login"}'
+
+# 3) 抓数据
+forge run forum -p '{"base":"https://forum.example.com","action":"boards"}'
+forge run forum -p '{"base":"https://forum.example.com","action":"list","board":"/b/general"}'
+forge run forum -p '{"base":"https://forum.example.com","action":"detail","topic":"/t/123"}'
+```
+
+**选择器不匹配时**（不同论坛程序）：
+
+```bash
+forge cfg forum --set '{"selectors":{"loginPath":"/ucp.php?mode=login","userField":"#username","passField":"#password","submit":"input[type=submit]","loginOk":".user-profile","topicItem":".topic-list .topic","postItem":".post"}}'
+```
+
+---
+
+## 八、公开服务
+
+```bash
+forge run weather -p '{"city":"上海","days":3}'
+forge run weather geocode -p '{"city":"Kyoto","count":3}'
+
+forge template install exchange-rate
+forge run exchange-rate -p '{"from":"USD","to":"CNY"}'
+forge run exchange-rate -p '{"from":"EUR","to":"JPY","amount":100}'
+
+forge template install translate
+forge run translate -p '{"text":"Hello world","to":"zh-CN"}'
+
+forge template install wiki-summary
+forge run wiki-summary -p '{"title":"图灵机","sentences":3}'
+```
+
+---
+
+## 九、存证 / 归档
+
+```bash
+# 整页截图
+forge run screenshot -p '{"url":"https://TARGET"}'
+
+# 只截元素
+forge run screenshot -p '{"url":"https://TARGET","selector":"main"}'
+
+# 截图但不落盘，直接拿 base64 给下游（比如让 AI 看图）
+forge run screenshot -p '{"url":"https://TARGET","output":"base64","type":"jpeg","quality":60}'
+
+# 挡住弹窗再截
+forge run screenshot -p '{"url":"https://TARGET","hideSelectors":[".cookie-banner","#modal"]}'
+
+# 网页转 PDF（A4 + 页脚页码）
+forge run pdf --params-file p.json
+# p.json:
+# {"url":"https://TARGET","format":"A4","printBackground":true,
+#  "displayHeaderFooter":true,
+#  "footerTemplate":"<div style=\"font-size:9px;width:100%;text-align:center\"><span class=pageNumber></span>/<span class=totalPages></span></div>"}
+```
+
+产物路径：`~/.forgeapi/data/screenshot/shots/` 与 `~/.forgeapi/data/pdf/pdfs/`。
+
+---
+
+## 十、全站 URL 发现
+
+```bash
+# 给根地址，自动找 sitemap（robots.txt → /sitemap.xml → /sitemap_index.xml → ...）
+forge run sitemap -p '{"url":"https://TARGET","limit":100}'
+
+# 只最近更新的
+forge run sitemap -p '{"url":"https://TARGET","since":"2026-11-01","limit":50}'
+
+# 只某个栏目
+forge run sitemap -p '{"url":"https://TARGET/sitemap.xml","prefix":"https://TARGET/blog/"}'
+
+# 正则过滤
+forge run sitemap -p '{"url":"https://TARGET/sitemap.xml","pattern":"/20(25|26)/"}'
+```
+
+拿到 URL 列表后批量抓：
+
+```bash
+forge run sitemap -p '{"url":"https://TARGET","limit":50}' \
+  | jq -r '.data.urls[].loc' > urls.txt
+```
+
+---
+
+## 十一、通用 HTTP / JSON
+
+任何有 JSON 接口但你没写插件的场景：
+
+```bash
+forge run http-api -p '{"endpoint":"https://api.x.com/list"}'
+forge run http-api -p '{"endpoint":"https://api.x.com/list","jsonpath":"$.data.items"}'
+forge run http-api -p '{"endpoint":"https://api.x.com/create","method":"POST","body":{"name":"x"},"headers":{"authorization":"Bearer ${cred:TOKEN}"}}'
+```
+
+自动识别包装键：`data` / `results` / `items` / `list` / `hits` / `records` / `rows`。
+
+---
+
+## 十二、批量抓
+
+```bash
+# tasks.jsonl
+cat > tasks.jsonl <<'EOF'
+{"id":"a","plugin":"weather","params":{"city":"上海"}}
+{"id":"b","plugin":"exchange-rate","params":{"from":"USD","to":"CNY"}}
+EOF
+
+forge batch tasks.jsonl -c 4 -r 3 --stream
+forge batch tasks.jsonl --out results.jsonl
+```
+
+`-c` 并发 / `-r` 重试（指数退避）/ `--rate` 每秒上限 / `--timeout` 单任务超时。
+
+---
+
+## 十三、串成管线
+
+**场景：搜索结果 → 逐条精读 → 汇总**
+
+```yaml
+name: search-then-read
+onError: continue
+input: { query: rust }
+steps:
+  - id: search
+    plugin: search-aggregate
+    params: { query: "${input.query}", limit: 5, sources: "hn,wiki" }
+  - id: detail
+    plugin: webpage
+    forEach: "${steps.search.data.results}"
+    limit: 3
+    concurrency: 2
+    onError: continue
+    pick: "title"
+    params: { url: "${item.url}" }
+output: { total: "${steps.search.data.total}", pages: "${steps.detail.items}" }
+```
+
+```bash
+forge pipeline pl.yaml -p 'query=rust async'
+```
+
+**场景：站点地图 → 批量精读**
+
+```yaml
+name: site-digest
+steps:
+  - id: urls
+    plugin: sitemap
+    params: { url: "https://TARGET", since: "2026-11-01", limit: 20 }
+  - id: pages
+    plugin: page-meta
+    forEach: "${steps.urls.data.urls}"
+    limit: 20
+    concurrency: 3
+    onError: continue
+    params: { url: "${item.loc}" }
+output:
+  count: "${steps.pages.count}"
+  titles: "${steps.pages.items[*]}"
+```
+
+**场景：多源数据组合成一个报告**
+
+```yaml
+name: daily-brief
+steps:
+  - id: rate
+    plugin: exchange-rate
+    params: { from: USD, to: CNY }
+  - id: weather
+    plugin: weather
+    params: { city: 上海, days: 2 }
+  - id: news
+    plugin: news-digest
+    params: { limit: 10, total: 10 }
+output:
+  usd_cny: "${steps.rate.data.results[0].rates.CNY}"
+  temp: "${steps.weather.data.当前.温度}"
+  headlines: "${steps.news.data.results}"
+```
+
+---
+
+## 十四、监控变化
+
+```bash
+# 首次建基线
+forge watch hn-search demo -p '{"query":"rust","limit":5}'
+
+# 后续对比
+forge watch hn-search demo -p '{"query":"rust","limit":10}'
+# 对比 demo：5 → 10 条
+# 新增 5，删除 0，变更 0，未变 5
+
+# 改内容时（比如价格）只比某个字段
+forge watch price-compare p1 -p '{"query":"键盘","demos":true}' --key title --fields price
+
+# 定时跑
+forge schedule add hn-search demo --name watch-rust --every 600 -p '{"query":"rust","limit":10}'
+forge schedule daemon
+```
+
+---
+
+## 十五、给 AI 用
+
+```bash
+# MCP
+forge mcp                       # 配置到 Claude Code / Cursor 即可
+# { "mcpServers": { "forgeapi": { "command": "forge", "args": ["mcp"] } } }
+
+# 或者让 AI 直接读文档
+forge skill <plugin>            # 单插件说明书
+forge schema <plugin>           # 参数 Schema
+```
+
+AI 侧会先 `resources/read forge://plugin/<name>/skill` 再调 `tools/call`，参数不会猜错。
+
+---
+
+## 常见失败对照
+
+| 报错 | 原因 | 处置 |
+| --- | --- | --- |
+| `Chromium 启动失败` | 没装浏览器 | `npx playwright install chromium` |
+| `插件已禁用` | 被 disable | `forge enable <name>` |
+| `插件未安装` | 没装或模板未装 | `forge init` 或 `forge template install <name>` |
+| `GitHub 403` | 未认证限流 | `forge github-repo set-token` |
+| `规则文件未找到` | 规则未写 | `forge rule <plugin> <name> --set ...` |
+| `未在 ... 发现 sitemap` | 站点无 sitemap | 换 `rss`，或让用户给具体地址 |
+| `page.goto: Timeout` | 目标慢 / 被墙 | 加 `waitFor` 或 `timeout`；检查代理 |
+| `选择器无命中` | DOM 与预期不符 | 先 `page-meta` / `webpage` 看真实结构 |
+| `input JSON 非法` | 引号被 shell 吃了 | 改用 `--params-file` |
+
+---
+
+## 参数速查
+
+```bash
+-p '{"k":"v"}'                  内联 JSON
+-p 'k=v,k2=v2'                  k=v 简写
+--params-file p.json            文件（Windows 推荐）
+--stream                        NDJSON 流式
+--json                          纯 JSON（机器读）
+-v                              详细日志
+```
