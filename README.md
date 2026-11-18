@@ -77,7 +77,7 @@ node dist/cli/index.js run weather -p '{"city":"上海","days":2}'
 ```bash
 npm link
 forge doctor                          # 环境自检
-forge list                            # 17 个内置插件
+forge list                            # 18 个内置插件
 ```
 
 工作区默认在 `~/.forgeapi`，可用 `FORGE_HOME` 覆盖：
@@ -98,7 +98,7 @@ forge list                            # 17 个内置插件
 
 ---
 
-## 17 个内置插件
+## 18 个内置插件
 
 `forge init` 后即可用。全部**免密钥**，除 GitHub 有未认证限流。
 
@@ -121,6 +121,7 @@ forge list                            # 17 个内置插件
 | `json-query` | 本地 JSON 查询（JSONPath + 投影 + 排序 + 去重） | `file`/`json`, `path`, `fields`, `sortBy`, `uniqueBy` | 本地 |
 | `pdf-text` | PDF 文本提取（本地文件 / URL，按页） | `file`/`url`, `pages`, `maxPages` | 本地 |
 | `crawl` | 站点爬取（入口 + 深度/限域/限页/robots） | `url`, `maxDepth`, `maxPages`, `urlPattern`, `render` | 浏览器/HTTP |
+| `form` | 通用表单提交与交互（填字段 → 提交 → 提取） | `url`, `fields`, `submit`, `waitFor`, `extract`, `method` | 浏览器/HTTP |
 
 每个插件都带 `skill.md`，`forge skill <name>` 可读，MCP 里是 `forge://plugin/<name>/skill` 资源。
 
@@ -723,7 +724,7 @@ npm pack                                  # → forgeapi-0.7.1.tgz（149 文件 
 mkdir /tmp/t && cd /tmp/t && npm init -y
 npm install /path/to/forgeapi-0.7.1.tgz
 npx forge --version                       # 0.7.1
-npx forge init                            # 17 插件 + 9 模板
+npx forge init                            # 18 插件 + 9 模板
 npx forge mcp --list                      # 16 工具（13 插件 + 3 子命令）
 ```
 

@@ -64,7 +64,7 @@ check('init 安装内置插件', initJ?.ok === true && initJ.installed.length >=
 check('init 播种模板', initJ?.templates >= 3, `templates=${initJ?.templates}`);
 
 const list = json(run(['list', '--json']));
-check('list 返回 17 个内置插件', Array.isArray(list) && list.length >= 17, `len=${list?.length}`);
+check('list 返回 18 个内置插件', Array.isArray(list) && list.length >= 18, `len=${list?.length}`);
 check('list 含 forum/webpage/weather', ['forum', 'webpage', 'weather'].every((n) => list?.some((p) => p.name === n)));
 
 /* ---------- 2. 自检 ---------- */
@@ -757,6 +757,21 @@ check('crawl urlPattern 过滤',
   crawlPattern.data.pages.filter((p) => p.depth > 0).every((p) => p.error || /protocol/.test(p.url)) &&
   crawlPattern.data.skipped.pattern > 0,
   JSON.stringify({ pages: crawlPattern?.data?.pages?.map((p) => p.url), skipped: crawlPattern?.data?.skipped })?.slice(0, 180));
+
+/* ---------- 27.6 0.11.0：form 表单提交 ---------- */
+const formHttp = json(run(['run', 'form', '--params-file', writeJsonFile(HOME, 'form2.json', {
+  url: 'https://httpbin.org/post',
+  method: 'http',
+  fields: [
+    { selector: 'user', value: 'demo' },
+    { selector: 'tag', value: 'forge' },
+  ],
+  maxChars: 500,
+})], { timeout: 120000 }));
+check('form http 模式 POST',
+  formHttp?.ok === true && Number(formHttp.data?.status) === 200 &&
+  String(formHttp.data?.body?.form?.user || '') === 'demo',
+  JSON.stringify({ status: formHttp?.data?.status, form: formHttp?.data?.body?.form })?.slice(0, 140));
 
 /* ---------- 28. 浏览器复用（同进程两次调用） ---------- */
 try {

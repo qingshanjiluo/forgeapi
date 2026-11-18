@@ -379,6 +379,31 @@ forge run crawl -p '{"url":"...","maxDepth":1,"includeText":false,"fields":[{"na
 
 **与其它插件的分工**：`sitemap` 只出 URL 清单 → `crawl` 爬 N 层带内容 → `webpage` 单页精提 → `batch` 批量跑。
 
+## 十四点三、表单提交 / 交互
+
+搜索框、筛选器、需要点同意条才出内容的页面。
+
+```bash
+# 站内搜索（不指定 submit 时按 Enter）
+forge run form --params-file f.json
+# f.json: {"url":"https://zh.wikipedia.org/wiki/Wikipedia:首页",
+#          "fields":[{"selector":"#searchInput,input[name=search]","value":"上海"}],
+#          "waitFor":"#firstHeading",
+#          "extract":[{"name":"标题","selector":"#firstHeading"}]}
+
+# 有提交按钮
+forge run form -p '{"url":"https://site/search","fields":[{"selector":"input[name=q]","value":"rust"}],"submit":"button.search-btn","waitFor":".results"}'
+
+# 先点同意条
+forge run form -p '{"url":"...","clicks":["#accept-cookies"],"fields":[...],"submit":"..."}'
+
+# 直接 POST 接口（无浏览器，快）
+forge run form -p '{"url":"https://api.site/login","method":"http","fields":[{"selector":"user","value":"u"},{"selector":"pass","value":"p"}]}'
+```
+
+**要点**：选择器写多选项更稳（`"#searchInput, input[name=search]"`）；
+提交按钮找不到就去掉 `submit` 走 Enter；正文摘要取"最长的 3 个段落"避开菜单噪声。
+
 ## 十四点五、从远端装模板
 
 模板库有 9 个包发布在 GitHub Release，换台机器也能一键装。

@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 0.11.0
+
+十一期：`form` 通用表单提交插件（17 → 18）。
+
+### 新增插件
+
+**`form`** —— 填字段 → 提交 → 等结果 → 按规则提取
+- 通用：任意 URL + 任意字段 + 任意提交按钮（`forum` 是论坛专用固定流程）
+- `fields` 自动识别元素类型：checkbox/radio 用 check、select 用 selectOption、其它 fill
+- `clicks` 支持提交前依次点击（同意条、展开按钮）
+- 无 `submit` 时在最后一个字段按 Enter
+- `waitFor` 等结果出现；`extract` 在页面内 DOM 提取
+- `takeText` 取"最长的 3 个段落"（避开菜单/语言列表噪声）
+- `method: "http"` 直接 POST（无浏览器，快），支持 form-urlencoded 与 json
+- `saveCookies` / `screenshot` 可选
+
+实测：Wikipedia 搜索框提交"上海" → 跳转上海市词条，标题与正文摘要均正确。
+
+### 质量
+
+- 自验 137 → **138 项**（+form http 模式 POST）
+- 单元测试 154；CI smoke 17；插件 17 → 18
+
 ## 0.10.0
 
 十期：`crawl` 站点爬取插件（16 → 17）。
