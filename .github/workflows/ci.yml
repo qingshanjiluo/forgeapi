@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build & test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+
+    env:
+      FORGE_HOME: ${{ runner.temp }}/forge-ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check & build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Doctor (env self-check)
+        run: node dist/cli/index.js doctor
+
+      - name: Init workspace
+        run: node dist/cli/index.js init
+
+      - name: Smoke — plugin list
+        run: |
+          node dist/cli/index.js list --json | node -e "
+            let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+              const items=JSON.parse(s);
+              if(!Array.isArray(items)||items.length<13){
+                console.error('期望 >=13 个插件，实际', items.length);process.exit(1);
+              }
+              console.log('插件数:', items.length);
+            });"
+
+      - name: Smoke — schema / skill
+        run: |
+          node dist/cli/index.js schema weather > /dev/null
+          node dist/cli/index.js skill weather > /dev/null
+          echo ok
+
+      - name: Smoke — MCP tool table
+        run: |
+          node dist/cli/index.js mcp --list | node -e "
+            let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+              const tools=JSON.parse(s);
+              if(!Array.isArray(tools)||!tools.length){
+                console.error('工具表为空');process.exit(1);
+              }
+              const bad=tools.filter(t=>!t.inputSchema||t.inputSchema.type!=='object');
+              if(bad.length){console.error('schema 不合规:',bad.map(b=>b.name));process.exit(1);}
+              console.log('工具数:', tools.length);
+            });"
+
+      - name: Smoke — pipeline dry-run
+        run: node dist/cli/index.js pipeline examples/compose-multi.json --dry-run
+
+      - name: Smoke — vault init/set/get
+        run: |
+          node dist/cli/index.js config --vault init --password cipass
+          node dist/cli/index.js config --vault set --plugin weather --key K --value V --password cipass
+          node dist/cli/index.js config --vault get --plugin weather --key K --password cipass \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+              const r=JSON.parse(s);
+              if(r.value!=='V'){console.error('vault 取回不符:',r.value);process.exit(1);}
+              console.log('vault ok');
+            });"
+
+      - name: Smoke — install / verify / sign
+        run: |
+          node dist/cli/index.js install plugins/builtin/webpage --force --yes > /dev/null
+          node dist/cli/index.js verify webpage --json | node -e "
+            let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+              const r=JSON.parse(s);
+              if(!r.ok){console.error('verify 未通过:',JSON.stringify(r));process.exit(1);}
+              console.log('verify ok');
+            });"
+          node dist/cli/index.js keygen --signer ci > /dev/null
+          node dist/cli/index.js sign webpage > /dev/null
+          node dist/cli/index.js trust verify webpage --json | node -e "
+            let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+              const r=JSON.parse(s);
+              const st=r.items&&r.items[0]&&r.items[0].check&&r.items[0].check.state;
+              if(st!=='signed'){console.error('签名状态:',st);process.exit(1);}
+              console.log('signature ok');
+            });"
+
+      - name: Smoke — batch (offline-safe, uses http-api)
+        run: |
+          cat > "${{ runner.temp }}/tasks.jsonl" <<'EOF'
+          {"id":"a","plugin":"http-api","params":{"endpoint":"https://httpbin.org/headers"}}
+          EOF
+          node dist/cli/index.js batch "${{ runner.temp }}/tasks.jsonl" --json \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+              const r=JSON.parse(s);
+              console.log('batch:', JSON.stringify(r.summary&&{total:r.summary.total,ok:r.summary.ok,fail:r.summary.fail}));
+            });"

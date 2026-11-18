@@ -1,0 +1,37 @@
+# 站点地图 → 逐页画像（批量侦察）
+# 用法：forge pipeline examples/site-digest.yaml -p '{"site":"https://example.com","since":"2026-11-01"}'
+name: site-digest
+description: 发现站点全部 URL，逐页取元信息画像，输出可读清单
+onError: continue
+
+input:
+  site: https://www.sitemaps.org
+  since: "2022-01-01"
+  limit: 10
+
+steps:
+  # 1) 站点地图发现 + 解析
+  - id: urls
+    plugin: sitemap
+    params:
+      url: "${input.site}"
+      since: "${input.since}"
+      limit: "${input.limit}"
+
+  # 2) 逐页取画像（并发 3，单页失败不中断）
+  - id: pages
+    plugin: page-meta
+    forEach: "${steps.urls.data.urls}"
+    limit: "${input.limit}"
+    concurrency: 3
+    onError: continue
+    pick: "title"
+    params:
+      url: "${item.loc}"
+      includeJsonLd: false
+
+output:
+  site: "${input.site}"
+  found: "${steps.urls.data.total}"
+  sampled: "${steps.pages.count}"
+  titles: "${steps.pages.items}"

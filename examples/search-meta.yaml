@@ -1,0 +1,35 @@
+# 搜索 → 页面画像 → 摘要（三步侦察，比逐条精读便宜）
+# 用法：forge pipeline examples/search-meta.yaml -p '{"query":"rust async"}'
+name: search-meta
+description: 多源搜索结果 + 每条的页面画像（不抓全文，只看 OG/标题/首段）
+onError: continue
+
+input:
+  query: rust async
+  limit: 3
+
+steps:
+  # 1) 多源搜索
+  - id: search
+    plugin: search-aggregate
+    params:
+      query: "${input.query}"
+      limit: 6
+      sources: hn,wiki
+
+  # 2) 对前 N 条取画像（轻量，比 webpage 快）
+  - id: meta
+    plugin: page-meta
+    forEach: "${steps.search.data.results}"
+    limit: "${input.limit}"
+    concurrency: 2
+    onError: continue
+    pick: "description"
+    params:
+      url: "${item.url}"
+      includeJsonLd: false
+
+output:
+  query: "${input.query}"
+  hits: "${steps.search.data.total}"
+  摘要: "${steps.meta.items}"

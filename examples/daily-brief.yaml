@@ -1,0 +1,35 @@
+# 每日简报：汇率 + 天气 + 新闻，合成一个输出
+# 需要先装模板：forge template install exchange-rate news-digest
+# 用法：forge pipeline examples/daily-brief.yaml -p '{"city":"上海"}'
+name: daily-brief
+description: 汇率 / 天气 / 新闻三源并行，合并成一条简报
+onError: continue
+
+input:
+  city: 上海
+  lat: 31.23
+  lon: 121.47
+
+steps:
+  - id: rate
+    plugin: exchange-rate
+    params: { from: USD, to: CNY }
+
+  - id: weather
+    plugin: weather
+    params:
+      lat: "${input.lat}"
+      lon: "${input.lon}"
+      days: 2
+
+  - id: news
+    plugin: news-digest
+    params: { limit: 5, total: 8 }
+
+output:
+  city: "${input.city}"
+  usd_cny: "${steps.rate.data.results[0].rates.CNY}"
+  当前温度: "${steps.weather.data.当前.温度}"
+  天气: "${steps.weather.data.当前.天气}"
+  预报: "${steps.weather.data.预报}"
+  头条: "${steps.news.data.results}"

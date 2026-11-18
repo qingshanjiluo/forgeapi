@@ -267,9 +267,9 @@ try {
     path.join(ROOT, 'dist', 'test', 'v5.test.js'),
     path.join(ROOT, 'dist', 'test', 'v6.test.js')],
   { encoding: 'utf8', stdio: 'pipe', timeout: 240000 });
-  check('单元测试 152/152 通过', true);
+  check('单元测试 154/154 通过', true);
 } catch (e) {
-  check('单元测试 152/152 通过', false, String(e.stdout || '').slice(-400));
+  check('单元测试 154/154 通过', false, String(e.stdout || '').slice(-400));
 }
 
 /* ---------- 13. MCP 服务端 ---------- */

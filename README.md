@@ -684,14 +684,14 @@ skills/forgeapi            可分发的 Skill 包
 ```bash
 npm run build      # tsc
 npm run dev        # tsc --watch
-npm test           # 单元测试（152）
+npm test           # 单元测试（154）
 npm run selftest   # 端到端自验（122 项）
 ```
 
 当前状态：
 
 ```
-单元测试   152 个（8 文件）
+单元测试   154 个（8 文件）
 自验       122 项断言，全部 PASS
 覆盖       提取器 / 聚合器 / 凭据 / 注册表 / 引擎 / MCP / 并发 / 调度
            / 完整性 / diff / 签名 / pipeline / 批量 / 新四插件

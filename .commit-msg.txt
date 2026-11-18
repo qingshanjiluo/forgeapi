@@ -1,0 +1,19 @@
+feat(ci): GitHub Actions 流水线 + 3 个工作流示例 + limit 变量支持
+
+CI (.github/workflows/ci.yml):
+- Node 20/22 矩阵，npm ci -> build -> 单元测试
+- 装 Chromium 后跑 doctor / init
+- smoke: 插件表 >=13、schema/skill、MCP 工具表校验、pipeline dry-run、
+  vault 三步、install+verify+sign、batch
+- 本地等价验证: scripts/ci-smoke.mjs（15/15 PASS）
+
+示例:
+- site-digest.yaml   站点地图 -> 逐页画像（实测 21 URL -> 采样 3 页）
+- daily-brief.yaml   汇率+天气+新闻三源合成（实测 3.2s 完成）
+- search-meta.yaml   搜索 -> 页面画像（轻量侦察，比抓全文便宜）
+
+修复:
+- pipeline 的 forEach limit 不支持变量：模板串被当定义时数值 -> NaN -> 不生效
+  改为运行时解析（数字直用，字符串先 resolveTemplate）
+  新增 2 条单测（变量生效 / 变量缺失不限量）
+- selftest 的单元测试断言同步到 154

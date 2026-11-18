@@ -34,8 +34,8 @@ export interface PipelineStep {
    * 每轮把当前元素注入 ${item}
    */
   forEach?: unknown;
-  /** forEach 最多处理多少条 */
-  limit?: number;
+  /** forEach 最多处理多少条（支持变量，如 "${input.limit}"） */
+  limit?: number | string;
   /** 循环并发数（默认 1，串行） */
   concurrency?: number;
   /** 失败策略，默认继承 pipeline.onError */
@@ -107,7 +107,7 @@ export function normalizePipeline(def: any): PipelineDef {
       command: s.command ? String(s.command) : undefined,
       params: (s.params && typeof s.params === 'object') ? s.params : {},
       forEach: s.forEach,
-      limit: s.limit !== undefined ? Number(s.limit) : undefined,
+      limit: s.limit !== undefined ? s.limit : undefined,
       concurrency: s.concurrency !== undefined ? Math.max(1, Number(s.concurrency)) : 1,
       onError: s.onError,
       pick: s.pick ? String(s.pick) : undefined,
@@ -251,7 +251,11 @@ export async function runPipeline(
     if (step.forEach !== undefined) {
       const arrRaw = resolveTemplate(step.forEach, baseCtx);
       const arr = Array.isArray(arrRaw) ? arrRaw : (arrRaw === undefined || arrRaw === null ? [] : [arrRaw]);
-      const sliced = step.limit && step.limit > 0 ? arr.slice(0, step.limit) : arr;
+      // limit 支持变量：数字直用，字符串先解析（"${input.limit}" → 3）
+      const limitN = step.limit === undefined
+        ? 0
+        : (typeof step.limit === 'number' ? step.limit : Number(resolveTemplate(step.limit, baseCtx)) || 0);
+      const sliced = limitN > 0 ? arr.slice(0, limitN) : arr;
 
       opts.onStep?.({ step: step.id!, state: 'start', index: 0, total: sliced.length });
 

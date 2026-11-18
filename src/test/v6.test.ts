@@ -174,6 +174,36 @@ test('runPipeline forEach 遵守 limit', async () => {
   assert.equal(step.items!.length, 2);
 });
 
+test('runPipeline forEach limit 支持变量', async () => {
+  const def: PipelineDef = {
+    steps: [
+      { id: 'list', plugin: 'src' },
+      { id: 'each', plugin: 'echo', forEach: '${steps.list.data.items}', limit: '${input.n}' },
+    ],
+  };
+  const result = await runPipeline(def, fakeRunner({
+    src: () => ({ items: [1, 2, 3, 4, 5, 6] }),
+    echo: (p) => p,
+  }), { input: { n: 2 } });
+  const step = result.steps.find((s) => s.id === 'each')!;
+  assert.equal(step.count, 2, 'limit 变量应解析为 2');
+});
+
+test('runPipeline forEach limit 变量无法解析时不限量', async () => {
+  const def: PipelineDef = {
+    steps: [
+      { id: 'list', plugin: 'src' },
+      { id: 'each', plugin: 'echo', forEach: '${steps.list.data.items}', limit: '${input.missing}' },
+    ],
+  };
+  const result = await runPipeline(def, fakeRunner({
+    src: () => ({ items: [1, 2, 3] }),
+    echo: (p) => p,
+  }), { input: {} });
+  const step = result.steps.find((s) => s.id === 'each')!;
+  assert.equal(step.count, 3, '无法解析时不限量');
+});
+
 test('runPipeline forEach 并发受 concurrency 限制', async () => {
   let running = 0;
   let peak = 0;
