@@ -338,7 +338,7 @@ check('MCP 工具表仍可用（回归）', mcpOk);
 
 /* ---------- 18. 0.3.0：远端模板 ---------- */
 const remoteAll = json(run(['template', 'remote', '--json']));
-check('template remote 返回索引', Array.isArray(remoteAll) && remoteAll.length >= 9, `len=${remoteAll?.length}`);
+check('template remote 返回索引', Array.isArray(remoteAll) && remoteAll.length >= 9 && String(remoteAll[0].url).startsWith('https://'), `len=${remoteAll?.length}`);
 
 const remoteSearch = json(run(['template', 'remote', 'rate', '--json']));
 check('template remote 关键词过滤', Array.isArray(remoteSearch) && remoteSearch.length === 1 && remoteSearch[0].name === 'exchange-rate',

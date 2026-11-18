@@ -356,6 +356,33 @@ forge schedule daemon
 
 ---
 
+## 十四点五、从远端装模板
+
+模板库有 9 个包发布在 GitHub Release，换台机器也能一键装。
+
+```bash
+forge template remote                    # 看远端索引（9 个，带真实 URL）
+forge template remote weather            # 按关键词筛
+
+# 直接给 URL 安装（跨机可用）
+forge template add \
+  https://github.com/qingshanjiluo/forgeapi/releases/download/templates-v1/exchange-rate.tgz
+
+forge run exchange-rate -p '{"from":"EUR","to":"JPY"}'
+# → rates.JPY = 174.85
+```
+
+自己发布模板：
+
+```bash
+forge template export my-plugin           # 导出到本地模板库
+cd ~/.forgeapi/templates/my-plugin && tar -czf ~/my-plugin.tgz .
+gh release upload templates-v1 ~/my-plugin.tgz   # 传到任意 Release
+# 然后在 registry.json 里加一条指向该 URL
+```
+
+索引来源优先级：`FORGE_REGISTRY` 环境变量 → `~/.forgeapi/templates/sources.json` → 随包 `templates/registry.json`。
+
 ## 十五、结果格式化（贴文档 / Excel）
 
 抓到数据后要贴进文档、表格或聊天窗口。

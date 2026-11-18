@@ -1,0 +1,22 @@
+feat(templates): 模板市场落地——9 个包发布到 GitHub Release
+
+之前 registry.json 的 url 是 builtin:xxx（只能本机用），
+模板生态缺"跨机分发"这一环。现在补齐。
+
+新增：
+- scripts/pack-templates.mjs  把 templates/* 打成 tgz（tar -C 直接打内容，无 package/ 前缀）
+- Release templates-v1  9 个 tgz 资产
+  demo-hn / demo-forum-pack / demo-weather-service / exchange-rate /
+  translate / news-digest / price-compare / github-trending / wiki-summary
+- templates/registry.json 全部指向真实下载 URL
+
+验证（新工作区，非本地）：
+  forge template remote            → 9 条，url 均为 https://github.com/.../templates-v1/*.tgz
+  forge template add <asset-url>   → 下载 + 解包 + 注册 + 记 integrity
+  forge run exchange-rate -p '{"from":"EUR","to":"JPY"}'  → 174.85
+
+文档：
+- cookbook 新增「从远端装模板」（含自己发布模板的步骤）
+- skill 同步
+
+自验新增断言：remote 索引首条的 url 必须以 https:// 开头（防退回 builtin:）
