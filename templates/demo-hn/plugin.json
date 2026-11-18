@@ -1,0 +1,31 @@
+{
+  "name": "demo-hn",
+  "version": "0.1.0",
+  "description": "模板演示：Hacker News 头条列表（声明式 API 聚合，含字段映射与去重）",
+  "type": "aggregate",
+  "permissions": ["net"],
+  "tags": ["template", "demo", "hn", "news"],
+  "schema": {
+    "type": "object",
+    "properties": {
+      "tags": { "type": "string", "description": "HN 标签，默认 front_page", "default": "front_page" },
+      "limit": { "type": "integer", "description": "条数", "default": 10 }
+    }
+  },
+  "sources": [
+    {
+      "name": "top",
+      "type": "api",
+      "url": "https://hn.algolia.com/api/v1/search",
+      "params": { "tags": "front_page", "hitsPerPage": "${limit}" },
+      "jsonpath": "$.hits"
+    }
+  ],
+  "merge": {
+    "strategy": "dedupe_by_title",
+    "fields": ["title", "url", "points", "num_comments", "author"],
+    "keyMap": { "title": "标题", "url": "链接", "points": "热度", "num_comments": "评论数", "author": "作者" },
+    "limit": 20
+  },
+  "output": { "fields": ["标题", "链接", "热度", "评论数", "作者", "来源"] }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "translate",
+  "version": "0.1.0",
+  "description": "翻译：Google translate 免费端点 + MyMemory 双源，取一致结果",
+  "type": "aggregate",
+  "permissions": ["net"],
+  "tags": ["template", "translate", "nlp"],
+  "schema": {
+    "type": "object",
+    "properties": {
+      "text": { "type": "string", "description": "要翻译的文本" },
+      "from": { "type": "string", "description": "源语言（auto 自动检测）", "default": "auto" },
+      "to": { "type": "string", "description": "目标语言，如 zh-CN / en / ja", "default": "zh-CN" }
+    },
+    "required": ["text"]
+  },
+  "sources": [
+    { "name": "google", "type": "code", "code": "const u='https://translate.googleapis.com/translate_a/single?client=gtx&sl='+encodeURIComponent(params.from||'auto')+'&tl='+encodeURIComponent(params.to||'zh-CN')+'&dt=t&q='+encodeURIComponent(params.text); const r=await fetch(u,{headers:{'user-agent':'Mozilla/5.0'}}); if(!r.ok) throw new Error('HTTP '+r.status); const j=await r.json(); const out=(j[0]||[]).map(x=>x[0]).join(''); return [{source:'google',text:out,languages:{from:j[2]||null,to:params.to||'zh-CN'}}];", "optional": true },
+    { "name": "mymemory", "type": "code", "code": "const src=(params.from==='auto'||!params.from)?'en':params.from; const u='https://api.mymemory.translated.net/get?q='+encodeURIComponent(params.text)+'&langpair='+encodeURIComponent(src+'|'+(params.to||'zh-CN')); const r=await fetch(u); if(!r.ok) throw new Error('HTTP '+r.status); const j=await r.json(); return [{source:'mymemory',text:j.responseData?.translatedText||'',quality:j.responseData?.match||0}];", "optional": true }
+  ],
+  "merge": { "strategy": "first_nonempty", "fields": ["source", "text", "languages", "quality"] },
+  "output": { "raw": true }
+}

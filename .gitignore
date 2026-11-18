@@ -1,0 +1,7 @@
+﻿node_modules/
+dist/
+.forge-local/
+*.tgz
+.DS_Store
+*.log
+tmp-*.json

@@ -1,0 +1,34 @@
+{
+  "name": "webpage",
+  "version": "0.1.0",
+  "description": "单页提取：打开任意网页，按 CSS/XPath/正则规则抽取结构化字段",
+  "type": "extract",
+  "permissions": ["browser", "net"],
+  "tags": ["webpage", "extract", "scrape"],
+  "schema": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string", "description": "目标网页地址" },
+      "fields": {
+        "type": "array",
+        "description": "字段名列表（简写模式，自动用常见选择器尝试）",
+        "items": { "type": "string" }
+      },
+      "root": { "type": "string", "description": "提取根节点选择器" },
+      "waitFor": { "type": "string", "description": "等待该选择器出现后再提取" },
+      "rule": { "type": "string", "description": "规则名（data/rules/<name>.yaml）" }
+    },
+    "required": ["url"]
+  },
+  "url": "${url}",
+  "fields": [
+    { "name": "title", "selector": "title", "type": "text" },
+    { "name": "h1", "selector": "h1", "type": "text", "optional": true },
+    { "name": "description", "selector": "meta[name=description]", "type": "attr", "attr": "content", "optional": true },
+    { "name": "canonical", "selector": "link[rel=canonical]", "type": "attr", "attr": "href", "optional": true },
+    { "name": "links", "selector": "a[href]", "type": "list", "limit": 50, "fields": [
+      { "name": "text", "selector": "", "type": "text" },
+      { "name": "href", "selector": "", "type": "attr", "attr": "href" }
+    ] }
+  ]
+}

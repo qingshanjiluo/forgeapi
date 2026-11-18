@@ -1,0 +1,29 @@
+{
+  "name": "exchange-rate",
+  "version": "0.1.0",
+  "description": "汇率查询与换算：Frankfurter 公开接口（欧洲央行数据，免密钥）",
+  "type": "aggregate",
+  "permissions": ["net"],
+  "tags": ["template", "finance", "rate", "currency"],
+  "schema": {
+    "type": "object",
+    "properties": {
+      "from": { "type": "string", "description": "源货币代码，如 USD", "default": "USD" },
+      "to": { "type": "string", "description": "目标货币代码，如 CNY", "default": "CNY" },
+      "amount": { "type": "number", "description": "换算金额", "default": 1 },
+      "date": { "type": "string", "description": "历史日期 YYYY-MM-DD（可选）" }
+    },
+    "required": ["from", "to"]
+  },
+  "sources": [
+    {
+      "name": "frankfurter",
+      "type": "api",
+      "url": "https://api.frankfurter.app/latest",
+      "params": { "from": "${from}", "to": "${to}" },
+      "jsonpath": "$"
+    }
+  ],
+  "merge": { "strategy": "concat" },
+  "output": { "raw": true }
+}

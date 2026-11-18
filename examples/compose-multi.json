@@ -1,0 +1,31 @@
+{
+  "name": "pipeline-demo",
+  "description": "三插件管线：汇率 → 天气 → 组合输出（端口最小可跑示例）",
+  "onError": "abort",
+  "input": {
+    "city_lat": 31.23,
+    "city_lon": 121.47
+  },
+  "steps": [
+    {
+      "id": "rate",
+      "plugin": "exchange-rate",
+      "params": { "from": "USD", "to": "CNY" }
+    },
+    {
+      "id": "weather",
+      "plugin": "weather",
+      "params": {
+        "lat": "${input.city_lat}",
+        "lon": "${input.city_lon}",
+        "days": 2
+      }
+    }
+  ],
+  "output": {
+    "usd_to_cny": "${steps.rate.data.results[0].rates.CNY}",
+    "temp_now": "${steps.weather.data.当前.温度}",
+    "sky": "${steps.weather.data.当前.天气}",
+    "forecast": "${steps.weather.data.预报}"
+  }
+}

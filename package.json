@@ -1,0 +1,77 @@
+{
+  "name": "forgeapi",
+  "version": "0.7.0",
+  "description": "把网页、公开服务、第三方来源锻造成 AI 能调用的统一接口",
+  "type": "module",
+  "bin": {
+    "forge": "./dist/cli/index.js"
+  },
+  "main": "./dist/core/engine.js",
+  "types": "./dist/core/types.d.ts",
+  "exports": {
+    ".": "./dist/core/engine.js",
+    "./types": "./dist/core/types.js",
+    "./extract": "./dist/core/extract.js",
+    "./browser": "./dist/core/browser.js",
+    "./pipeline": "./dist/core/pipeline.js",
+    "./server": "./dist/server/index.js"
+  },
+  "files": [
+    "dist",
+    "plugins",
+    "templates",
+    "examples",
+    "docs",
+    "skills",
+    "scripts",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli/index.js",
+    "serve": "node dist/cli/index.js serve",
+    "mcp": "node dist/cli/index.js mcp",
+    "init": "node dist/cli/index.js init",
+    "test": "node --test dist/test/*.test.js",
+    "selftest": "node scripts/selftest.mjs",
+    "bench": "node scripts/bench-browser.mjs",
+    "prepublishOnly": "tsc"
+  },
+  "keywords": [
+    "api",
+    "scraping",
+    "playwright",
+    "cli",
+    "plugins",
+    "mcp",
+    "pipeline",
+    "ai-agent",
+    "forge"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qingshanjiluo/forgeapi.git"
+  },
+  "homepage": "https://github.com/qingshanjiluo/forgeapi#readme",
+  "bugs": {
+    "url": "https://github.com/qingshanjiluo/forgeapi/issues"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "commander": "^14.0.0",
+    "js-yaml": "^4.1.0",
+    "playwright": "^1.50.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "hn-search",
+  "version": "0.1.0",
+  "description": "Hacker News 搜索：Algolia API 封装，按关键词检索标题/链接/热度",
+  "type": "aggregate",
+  "permissions": ["net"],
+  "tags": ["search", "news", "hn"],
+  "schema": {
+    "type": "object",
+    "properties": {
+      "query": { "type": "string", "description": "搜索关键词" },
+      "tags": { "type": "string", "description": "HN 标签过滤：story/comment/(story,show_hn)…", "default": "story" },
+      "limit": { "type": "integer", "description": "返回条数", "default": 20 }
+    },
+    "required": ["query"]
+  },
+  "sources": [
+    {
+      "name": "hackernews",
+      "type": "api",
+      "url": "https://hn.algolia.com/api/v1/search",
+      "method": "GET",
+      "params": { "query": "${query}", "tags": "${tags}", "hitsPerPage": "${limit}" },
+      "jsonpath": "$.hits"
+    }
+  ],
+  "merge": {
+    "strategy": "concat",
+    "fields": ["title", "url", "points", "author", "num_comments"],
+    "keyMap": { "title": "标题", "url": "链接", "points": "热度", "author": "作者", "num_comments": "评论数" }
+  },
+  "output": { "fields": ["标题", "链接", "热度", "作者", "评论数", "来源"] }
+}

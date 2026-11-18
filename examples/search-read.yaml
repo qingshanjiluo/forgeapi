@@ -1,0 +1,37 @@
+# 示例工作流：搜索 → 逐条精读 → 汇总
+# 用法：forge pipeline examples/search-read.yaml -p 'query=rust async'
+name: search-then-read
+description: 多源搜索，取前 N 条 URL 逐条提取页面标题与首段，汇总输出
+
+onError: continue
+
+input:
+  query: rust
+  limit: 3
+
+steps:
+  # 1) 多源搜索聚合
+  - id: search
+    plugin: search-aggregate
+    params:
+      query: "${input.query}"
+      limit: 5
+      sources: hn,wiki
+
+  # 2) 逐条精读（只取前 3 条，并发 2 避免打爆目标站）
+  - id: detail
+    plugin: webpage
+    forEach: "${steps.search.data.results}"
+    limit: 3
+    concurrency: 2
+    onError: continue
+    # pick 是相对插件 data 的点路径，只保留需要的字段
+    pick: "title"
+    params:
+      url: "${item.url}"
+      waitFor: "body"
+
+output:
+  query: "${input.query}"
+  total: "${steps.search.data.total}"
+  pages: "${steps.detail.items}"

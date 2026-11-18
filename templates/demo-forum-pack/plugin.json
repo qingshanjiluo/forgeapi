@@ -1,0 +1,35 @@
+{
+  "name": "demo-forum-pack",
+  "version": "0.1.0",
+  "description": "模板演示：论坛封装包（登录 + 板块 + 列表 + 详情四步会话）",
+  "type": "flow",
+  "permissions": ["browser", "net", "credential", "fs-write"],
+  "tags": ["template", "forum", "session"],
+  "schema": {
+    "type": "object",
+    "properties": {
+      "base": { "type": "string", "description": "论坛根地址" },
+      "action": { "type": "string", "enum": ["login", "list", "detail"], "default": "list" },
+      "topic": { "type": "string", "description": "帖子路径" }
+    },
+    "required": ["base"]
+  },
+  "steps": [
+    { "action": "goto", "url": "${base}/login" },
+    { "action": "fill", "selector": "input[name=username]", "value": "${cred:USERNAME}" },
+    { "action": "fill", "selector": "input[name=password]", "value": "${cred:PASSWORD}" },
+    { "action": "click", "selector": "button[type=submit]" },
+    { "action": "waitFor", "selector": ".user-menu, .avatar", "timeout": 15000 },
+    { "action": "cookie-save" },
+    { "action": "goto", "url": "${base}" },
+    {
+      "action": "extract",
+      "key": "topics",
+      "fields": [
+        { "name": "title", "selector": ".topic-title", "type": "text" },
+        { "name": "href", "selector": ".topic-title", "type": "attr", "attr": "href" }
+      ]
+    }
+  ],
+  "output": { "raw": true }
+}

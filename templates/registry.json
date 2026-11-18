@@ -1,0 +1,65 @@
+[
+  {
+    "name": "demo-hn",
+    "version": "0.1.0",
+    "description": "HN 头条列表（声明式 API 聚合 + 字段映射 + 去重）",
+    "tags": ["demo", "news", "api"],
+    "url": "builtin:demo-hn"
+  },
+  {
+    "name": "demo-forum-pack",
+    "version": "0.1.0",
+    "description": "论坛封装包（登录 + 板块 + 列表 + 详情四步会话）",
+    "tags": ["demo", "forum", "session"],
+    "url": "builtin:demo-forum-pack"
+  },
+  {
+    "name": "demo-weather-service",
+    "version": "0.1.0",
+    "description": "把公开服务包成统一接口（Open-Meteo）",
+    "tags": ["demo", "service", "weather"],
+    "url": "builtin:demo-weather-service"
+  },
+  {
+    "name": "exchange-rate",
+    "version": "0.1.0",
+    "description": "汇率查询与换算（Frankfurter / ECB 数据）",
+    "tags": ["finance", "rate", "currency"],
+    "url": "builtin:exchange-rate"
+  },
+  {
+    "name": "translate",
+    "version": "0.1.0",
+    "description": "翻译（Google + MyMemory 双源兜底）",
+    "tags": ["nlp", "translate"],
+    "url": "builtin:translate"
+  },
+  {
+    "name": "news-digest",
+    "version": "0.1.0",
+    "description": "多源新闻聚合、关键词过滤、去重排序",
+    "tags": ["news", "rss", "digest"],
+    "url": "builtin:news-digest"
+  },
+  {
+    "name": "price-compare",
+    "version": "0.1.0",
+    "description": "比价骨架：站点配置驱动，归一化价格并排序",
+    "tags": ["price", "ecommerce", "compare"],
+    "url": "builtin:price-compare"
+  },
+  {
+    "name": "github-trending",
+    "version": "0.1.0",
+    "description": "GitHub 趋势榜（搜索 API 排序）",
+    "tags": ["github", "trending", "dev"],
+    "url": "builtin:github-trending"
+  },
+  {
+    "name": "wiki-summary",
+    "version": "0.1.0",
+    "description": "维基词条摘要（REST summary 端点）",
+    "tags": ["wiki", "knowledge", "summary"],
+    "url": "builtin:wiki-summary"
+  }
+]
