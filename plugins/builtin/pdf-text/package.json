@@ -1,0 +1,10 @@
+{
+  "name": "pdf-text-local",
+  "private": true,
+  "version": "0.1.0",
+  "description": "DTO for ForgeAPI pdf-text plugin (dependency carrier)",
+  "type": "module",
+  "dependencies": {
+    "pdfjs-dist": "^4.10.38"
+  }
+}

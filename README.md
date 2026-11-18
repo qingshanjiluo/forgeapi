@@ -77,7 +77,7 @@ node dist/cli/index.js run weather -p '{"city":"上海","days":2}'
 ```bash
 npm link
 forge doctor                          # 环境自检
-forge list                            # 13 个内置插件
+forge list                            # 16 个内置插件
 ```
 
 工作区默认在 `~/.forgeapi`，可用 `FORGE_HOME` 覆盖：
@@ -98,7 +98,7 @@ forge list                            # 13 个内置插件
 
 ---
 
-## 13 个内置插件
+## 16 个内置插件
 
 `forge init` 后即可用。全部**免密钥**，除 GitHub 有未认证限流。
 
@@ -117,6 +117,9 @@ forge list                            # 13 个内置插件
 | `pdf` | 网页转 PDF | `url`, `format`, `landscape`, `margin`, `pageRanges` | 浏览器 |
 | `page-meta` | 页面画像（OG/Twitter/JSON-LD/标题层级/订阅源） | `url`, `includeJsonLd` | 浏览器 |
 | `sitemap` | 站点地图解析与 URL 发现（index/gzip/纯文本） | `url`, `limit`, `since`, `prefix`, `pattern` | HTTP |
+| `out` | 结果格式化 → CSV / Markdown / 列表 / TSV | `data`/`file`, `format`, `columns`, `headers` | 本地 |
+| `json-query` | 本地 JSON 查询（JSONPath + 投影 + 排序 + 去重） | `file`/`json`, `path`, `fields`, `sortBy`, `uniqueBy` | 本地 |
+| `pdf-text` | PDF 文本提取（本地文件 / URL，按页） | `file`/`url`, `pages`, `maxPages` | 本地 |
 
 每个插件都带 `skill.md`，`forge skill <name>` 可读，MCP 里是 `forge://plugin/<name>/skill` 资源。
 
@@ -689,14 +692,14 @@ skills/forgeapi            可分发的 Skill 包
 npm run build      # tsc
 npm run dev        # tsc --watch
 npm test           # 单元测试（154）
-npm run selftest   # 端到端自验（122 项）
+npm run selftest   # 端到端自验（127 项）
 ```
 
 当前状态：
 
 ```
 单元测试   154 个（8 文件）
-自验       122 项断言，全部 PASS
+自验       127 项断言，全部 PASS
 覆盖       提取器 / 聚合器 / 凭据 / 注册表 / 引擎 / MCP / 并发 / 调度
            / 完整性 / diff / 签名 / pipeline / 批量 / 新四插件
 ```
@@ -712,7 +715,7 @@ npm pack                                  # → forgeapi-0.7.1.tgz（149 文件 
 mkdir /tmp/t && cd /tmp/t && npm init -y
 npm install /path/to/forgeapi-0.7.1.tgz
 npx forge --version                       # 0.7.1
-npx forge init                            # 13 插件 + 9 模板
+npx forge init                            # 16 插件 + 9 模板
 npx forge mcp --list                      # 16 工具（13 插件 + 3 子命令）
 ```
 

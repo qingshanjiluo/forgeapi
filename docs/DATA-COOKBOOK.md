@@ -356,6 +356,67 @@ forge schedule daemon
 
 ---
 
+## 十五、结果格式化（贴文档 / Excel）
+
+抓到数据后要贴进文档、表格或聊天窗口。
+
+```bash
+# 直接转 Markdown 表格
+forge run hn-search -p '{"query":"rust","limit":5}' > r.json
+forge run out -p '{"file":"r.json","format":"markdown"}'
+# → data.text 是可直接粘贴的表格
+
+# CSV（进 Excel）
+forge run out -p '{"file":"r.json","format":"csv","separator":","}'
+
+# 只保留要的列 + 改表头
+forge run out --params-file o.json
+# o.json: {"file":"r.json","format":"csv",
+#          "columns":["标题","链接","热度"],"headers":["Title","URL","Score"]}
+
+# 纯文本列表（聊天窗口）
+forge run out -p '{"file":"r.json","format":"list","limit":3}'
+```
+
+## 十六、本地 JSON 加工
+
+上一步的结果落盘后做二次处理，不联网。
+
+```bash
+# 取路径
+forge run json-query -p '{"file":"r.json","path":"$.data.results"}'
+
+# 排序 + 限量 + 选字段
+forge run json-query --params-file q.json
+# q.json: {"file":"r.json","path":"$.data.results",
+#          "fields":["title","url","score"],"sortBy":"score","order":"desc","limit":5}
+
+# 谓词过滤
+forge run json-query -p '{"file":"r.json","path":"$.items[?(@.price>100)]"}'
+
+# 递归找键
+forge run json-query -p '{"file":"big.json","path":"$..title"}'
+
+# 去重
+forge run json-query -p '{"file":"r.json","path":"$.results","uniqueBy":"url"}'
+```
+
+## 十七、读 PDF
+
+```bash
+# 本地文件
+forge run pdf-text -p '{"file":"/path/to/doc.pdf"}'
+
+# 远程
+forge run pdf-text -p '{"url":"https://arxiv.org/pdf/xxxx.pdf","pages":"1-3"}'
+
+# 只要首页摘要
+forge run pdf-text -p '{"file":"paper.pdf","pages":"1","maxPages":1}'
+```
+
+首次装本插件会自动装凭据 `pdfjs-dist`；缺依赖时给出可执行提示。
+扫描件（图片型 PDF）提取不到文本，需先 OCR。
+
 ## 十五、给 AI 用
 
 ```bash

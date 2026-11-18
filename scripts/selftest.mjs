@@ -63,7 +63,7 @@ check('init 安装内置插件', initJ?.ok === true && initJ.installed.length >=
 check('init 播种模板', initJ?.templates >= 3, `templates=${initJ?.templates}`);
 
 const list = json(run(['list', '--json']));
-check('list 返回 13 个内置插件', Array.isArray(list) && list.length >= 13, `len=${list?.length}`);
+check('list 返回 16 个内置插件', Array.isArray(list) && list.length >= 16, `len=${list?.length}`);
 check('list 含 forum/webpage/weather', ['forum', 'webpage', 'weather'].every((n) => list?.some((p) => p.name === n)));
 
 /* ---------- 2. 自检 ---------- */
@@ -394,10 +394,11 @@ try { errObj = JSON.parse(errLine); } catch { /* ignore */ }
 check('--stream 失败输出 error 行', errObj?.type === 'error' && !errObj.ok, errLine?.slice(0, 120));
 
 /* ---------- 22. 0.4.0：批量 / 校验 / 监视 ---------- */
+// 任务用纯本地插件（out / json-query），避免网络波动污染断言
 const batchFile = path.join(HOME, 'batch.json');
 fs.writeFileSync(batchFile, JSON.stringify([
-  { id: 'w', plugin: 'weather', params: { lat: 31.23, lon: 121.47, days: 1 } },
-  { id: 'r', plugin: 'exchange-rate', params: { from: 'USD', to: 'CNY' } },
+  { id: 'a', plugin: 'out', params: { data: [{ k: 1 }, { k: 2 }], format: 'csv' } },
+  { id: 'b', plugin: 'json-query', params: { json: { items: [1, 2, 3] }, path: '$..*', limit: 2 } },
   { id: 'bad', plugin: 'no-such-plugin', params: {} },
 ]), 'utf8');
 
@@ -632,7 +633,54 @@ check('sitemap 无发现时明确报错',
   smMissing?.ok === false && /发现 sitemap/.test(String(smMissing?.error)),
   String(smMissing?.error).slice(0, 100));
 
-/* ---------- 27. 浏览器复用（同进程两次调用） ---------- */
+/* ---------- 27. 0.8.0：out / json-query / pdf-text ---------- */
+const outRes = json(run(['run', 'out', '--params-file', writeJsonFile(HOME, 'out.json', {
+  data: [{ 标题: 'A', 热度: 10 }, { 标题: 'B', 热度: 5 }],
+  format: 'markdown',
+})]));
+check('out 生成 Markdown 表格',
+  outRes?.ok === true && String(outRes.data?.text || '').includes('| 标题 | 热度 |') && outRes.data?.rows === 2,
+  JSON.stringify(outRes?.data?.text)?.slice(0, 120));
+
+const outCsv = json(run(['run', 'out', '--params-file', writeJsonFile(HOME, 'out2.json', {
+  data: [{ a: 'x,y', b: 1 }],
+  format: 'csv',
+})]));
+check('out CSV 正确转义', outCsv?.ok === true && String(outCsv.data?.text || '').includes('"x,y"'),
+  JSON.stringify(outCsv?.data?.text));
+
+const jq = json(run(['run', 'json-query', '--params-file', writeJsonFile(HOME, 'jq.json', {
+  json: { results: [{ title: 'A', score: 10 }, { title: 'B', score: 30 }, { title: 'C', score: 20 }] },
+  path: '$.results', sortBy: 'score', order: 'desc', limit: 2,
+})]));
+check('json-query 排序 + 限量',
+  jq?.ok === true && Array.isArray(jq.data) && jq.data.length === 2 && jq.data[0].score === 30,
+  JSON.stringify(jq?.data)?.slice(0, 140));
+
+const jqFilter = json(run(['run', 'json-query', '--params-file', writeJsonFile(HOME, 'jq2.json', {
+  json: { items: [{ p: 50 }, { p: 150 }, { p: 200 }] },
+  path: '$.items[?(@.p>100)]',
+})]));
+check('json-query 谓词过滤',
+  jqFilter?.ok === true && Array.isArray(jqFilter.data) && jqFilter.data.length === 2,
+  JSON.stringify(jqFilter?.data)?.slice(0, 120));
+
+/* pdf-text：先用 pdf 插件造样本，再提取 */
+const pdfSample = json(run(['run', 'pdf', '--params-file', writeJsonFile(HOME, 'pdfgen.json', {
+  url: 'https://example.com',
+})], { timeout: 180000 }));
+if (pdfSample?.ok && fs.existsSync(String(pdfSample.data?.file))) {
+  const txt = json(run(['run', 'pdf-text', '--params-file', writeJsonFile(HOME, 'pdftxt.json', {
+    file: String(pdfSample.data.file), maxPages: 1,
+  })], { timeout: 240000 }));
+  check('pdf-text 提取文本',
+    txt?.ok === true && Number(txt.data?.chars) > 20,
+    JSON.stringify({ chars: txt?.data?.chars, pages: txt?.data?.pages })?.slice(0, 120));
+} else {
+  check('pdf-text 提取文本', false, 'pdf 样本生成失败（跳过）');
+}
+
+/* ---------- 28. 浏览器复用（同进程两次调用） ---------- */
 try {
   const bench = execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'bench-browser.mjs')], {
     encoding: 'utf8', stdio: 'pipe', timeout: 180000, env: { ...process.env, FORGE_HOME: HOME },

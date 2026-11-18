@@ -37,7 +37,7 @@ forge doctor                      # 环境自检（chromium 是否就绪）
 需要按场景查配方时，读仓库里的 `docs/DATA-COOKBOOK.md`（按「我要什么」组织，
 含陌生页面侦察、列表抓取、登录站、批量、管线、监控、失败对照）。
 
-## 13 个内置插件（`forge init` 后即可用）
+## 16 个内置插件（`forge init` 后即可用）
 
 | 插件 | 用途 | 关键参数 |
 | --- | --- | --- |
@@ -54,6 +54,15 @@ forge doctor                      # 环境自检（chromium 是否就绪）
 | `pdf` | 网页转 PDF | `url`, `format`, `landscape`, `margin` |
 | `page-meta` | 页面画像（OG/Twitter/JSON-LD） | `url`, `includeJsonLd` |
 | `sitemap` | 站点地图解析与 URL 发现 | `url`, `limit`, `since`, `prefix` |
+| `out` | 结果 → CSV/Markdown/列表/TSV | `data`/`file`, `format`, `columns` |
+| `json-query` | 本地 JSON 查询（JSONPath+投影+排序） | `file`/`json`, `path`, `fields`, `sortBy` |
+| `pdf-text` | PDF 文本提取（按页） | `file`/`url`, `pages`, `maxPages` |
+
+**典型组合**：抓完数据要贴文档 →
+```bash
+forge run search-aggregate -p '{"query":"X","limit":5}' > r.json
+forge run out -p '{"file":"r.json","format":"markdown"}'
+```
 
 ## 9 个模板（需 `forge template install <name>`）
 

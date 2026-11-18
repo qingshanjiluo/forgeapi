@@ -1,0 +1,34 @@
+feat(plugins): 0.8.0 三个本地能力插件
+
+插件 13 → 16：
+
+out —— 结果格式化
+- JSON → CSV / Markdown 表格 / 列表 / TSV
+- 自动推断列（所有条目键并集），支持 columns 指定 + headers 重命名
+- CSV 正确转义（含分隔符/引号/换行的单元格）
+- 可读文件或直接给 data
+
+json-query —— 本地 JSON 查询（不联网）
+- JSONPath: $.a.b / [0] / [-1] / [*] / [1:3] / $..title / [?(@.p>100)]
+- 字段投影、排序（asc/desc）、去重（uniqueBy）、限量、flatten
+
+pdf-text —— PDF 文本提取
+- 本地文件或 URL，按页返回文本 + 元信息
+- 页码范围 "1-3,5"、maxPages 防超大文件
+- 依赖 pdfjs-dist，安装时自动装（缺失时给可执行提示）
+
+修复（开发中实际踩到）：
+- json-query 的 JSONPath 命中"一个数组节点"时多包一层，sort/limit 失效
+- json-query 谓词 [?(@.p>100)] 没剥外层括号，恒返回空
+- 自验的 batch 断言用 weather 会受网络波动 → 改纯本地插件
+
+文档：
+- README 插件表 +3 行，13→16
+- CHANGELOG 加 0.8.0
+- cookbook 补"结果格式化""本地 JSON 加工""读 PDF"三章
+- skill 同步（7517 字节）
+
+验证：
+- 自验 122 → 127 项全过
+- ci-smoke 17 项全过
+- 单元测试 154 保持

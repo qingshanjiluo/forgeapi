@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## 0.8.0
+
+八期：三个本地能力插件（格式化 / 查询 / PDF 读取）。
+
+### 新增插件（13 → 16）
+
+- **`out`** —— 结果格式化
+  - JSON → CSV / Markdown 表格 / 列表 / TSV
+  - 自动推断列（所有条目键的并集）、支持 `columns` 指定与 `headers` 重命名
+  - CSV 正确转义（含分隔符/引号/换行的单元格）
+  - 可读文件（`file`）或直接给数据（`data`）
+- **`json-query`** —— 本地 JSON 查询（不联网）
+  - JSONPath：`$.a.b` / `[0]` / `[-1]` / `[*]` / `[1:3]` / `$..title` / `[?(@.p>100)]`
+  - 字段投影、排序（asc/desc）、去重（uniqueBy）、限量、flatten
+- **`pdf-text`** —— PDF 文本提取
+  - 本地文件或 URL，按页返回文本 + 元信息
+  - 页码范围 `"1-3,5"`、`maxPages` 防超大文件
+  - 依赖 `pdfjs-dist`，安装时自动装（缺失时给可执行提示）
+
+### 修复
+
+- `json-query` 的 JSONPath 命中"一个数组节点"时结果多包一层，导致 sort/limit 失效
+- `json-query` 的谓词过滤 `[?(@.p>100)]` 没剥外层括号，永远返回空
+- 自验里 batch 用 weather 做断言，受网络波动影响 → 改用纯本地插件
+
+### 测试
+
+- 自验 122 → **127 项**（新增 5：out markdown、out CSV 转义、json-query 排序、json-query 谓词、pdf-text 提取）
+- 单元测试保持 **154**
+
 ## 0.7.0
 
 七期：四个高频插件 + 控制台工作流页签 + 可分发的 Skill 包。
