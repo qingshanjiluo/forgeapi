@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## 0.10.0
+
+十期：`crawl` 站点爬取插件（16 → 17）。
+
+### 新增插件
+
+**`crawl`** —— 从入口按层爬取
+- BFS 按深度抓取，去重 / 限域（sameOrigin）/ 限页（maxPages）/ 控并发
+- robots.txt 的 Disallow 前缀匹配（可用 `respectRobots: false` 关闭）
+- `urlPattern` 正则过滤（只抓某栏目）
+- 默认 fetch + cheerio（快），`render: true` 改走 Playwright（SPA）
+- 每页返回：`url` / `depth` / `title` / `description` / `textLength` / `text`（可关）/ `links`（可关）
+- `fields[]` 自定义字段；`delay` 礼貌间隔
+- 统计 `fetched` / `failed` / `queued` / `skipped{robots,pattern,origin,error}`
+
+补齐了 sitemap（只出 URL）与 webpage（单页）之间的中间层。
+
+### 测试
+
+- 自验 135 → **137 项**（+crawl 多层去重、+urlPattern 过滤）
+- 单元测试保持 154；CI smoke 17
+
 ## 0.9.0
 
 九期：控制台补齐三个页签（调度 / 校验 / 批量）+ 模板市场落地 + init 的 --no-install。

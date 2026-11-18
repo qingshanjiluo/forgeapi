@@ -64,7 +64,7 @@ check('init 安装内置插件', initJ?.ok === true && initJ.installed.length >=
 check('init 播种模板', initJ?.templates >= 3, `templates=${initJ?.templates}`);
 
 const list = json(run(['list', '--json']));
-check('list 返回 16 个内置插件', Array.isArray(list) && list.length >= 16, `len=${list?.length}`);
+check('list 返回 17 个内置插件', Array.isArray(list) && list.length >= 17, `len=${list?.length}`);
 check('list 含 forum/webpage/weather', ['forum', 'webpage', 'weather'].every((n) => list?.some((p) => p.name === n)));
 
 /* ---------- 2. 自检 ---------- */
@@ -727,6 +727,36 @@ if (pdfSample?.ok && fs.existsSync(String(pdfSample.data?.file))) {
 } else {
   check('pdf-text 提取文本', false, 'pdf 样本生成失败（跳过）');
 }
+
+/* ---------- 27.5 0.10.0：crawl 站点爬取 ---------- */
+const crawlRes = json(run(['run', 'crawl', '--params-file', writeJsonFile(HOME, 'crawl.json', {
+  url: 'https://www.sitemaps.org',
+  maxDepth: 1,
+  maxPages: 4,
+  includeText: false,
+})], { timeout: 240000 }));
+check('crawl 抓多层并去重',
+  crawlRes?.ok === true &&
+  Array.isArray(crawlRes.data?.pages) &&
+  crawlRes.data.fetched >= 2 &&
+  crawlRes.data.pages.some((p) => p.depth === 1) &&
+  new Set(crawlRes.data.pages.map((p) => p.url)).size === crawlRes.data.pages.length,
+  JSON.stringify({ fetched: crawlRes?.data?.fetched, depth1: crawlRes?.data?.pages?.filter((p) => p.depth === 1).length })?.slice(0, 140));
+
+const crawlPattern = json(run(['run', 'crawl', '--params-file', writeJsonFile(HOME, 'crawl2.json', {
+  url: 'https://www.sitemaps.org',
+  maxDepth: 1,
+  maxPages: 5,
+  urlPattern: '/protocol',
+  includeText: false,
+  includeLinks: false,
+})], { timeout: 240000 }));
+check('crawl urlPattern 过滤',
+  crawlPattern?.ok === true &&
+  // 入口本身豁免 pattern（设计如此），只看抓到的下一层
+  crawlPattern.data.pages.filter((p) => p.depth > 0).every((p) => p.error || /protocol/.test(p.url)) &&
+  crawlPattern.data.skipped.pattern > 0,
+  JSON.stringify({ pages: crawlPattern?.data?.pages?.map((p) => p.url), skipped: crawlPattern?.data?.skipped })?.slice(0, 180));
 
 /* ---------- 28. 浏览器复用（同进程两次调用） ---------- */
 try {

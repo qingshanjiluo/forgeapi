@@ -356,6 +356,29 @@ forge schedule daemon
 
 ---
 
+## 十四点二、全站爬取
+
+从入口爬 N 层，拿回每页标题 / 摘要 / 链接。
+
+```bash
+# 抓 2 层，最多 20 页
+forge run crawl -p '{"url":"https://example.com","maxDepth":2,"maxPages":20}'
+
+# 只抓 /blog/ 下的，加礼貌间隔
+forge run crawl -p '{"url":"https://example.com","maxDepth":3,"urlPattern":"/blog/","delay":300,"concurrency":3}'
+
+# SPA（JS 渲染）→ 用浏览器
+forge run crawl -p '{"url":"https://spa.example","maxDepth":1,"render":true,"maxPages":10}'
+
+# 只要特定字段，不要全文
+forge run crawl -p '{"url":"...","maxDepth":1,"includeText":false,"fields":[{"name":"标题","selector":"h1"}]}'
+```
+
+输出 `pages[]` 按深度升序，含 `url` / `depth` / `title` / `textLength` / `links[]` / `text`。
+`skipped` 里能看到因 robots / 限域 / 正则被跳过的数量。
+
+**与其它插件的分工**：`sitemap` 只出 URL 清单 → `crawl` 爬 N 层带内容 → `webpage` 单页精提 → `batch` 批量跑。
+
 ## 十四点五、从远端装模板
 
 模板库有 9 个包发布在 GitHub Release，换台机器也能一键装。
