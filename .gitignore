@@ -6,3 +6,11 @@ dist/
 .DS_Store
 *.log
 tmp-*.json
+
+# 临时文件
+.msg.txt
+.rn*.md
+.patch-*.mjs
+.dbg-*.mjs
+.release-notes*.md
+.commit-msg.txt
