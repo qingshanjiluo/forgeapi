@@ -2,6 +2,10 @@
 
 > 把网页、公开服务、第三方来源，锻造成 AI 能直接调用的统一接口。
 
+[![CI](https://github.com/qingshanjiluo/forgeapi/actions/workflows/ci.yml/badge.svg)](https://github.com/qingshanjiluo/forgeapi/actions/workflows/ci.yml)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+![node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
+
 本地 CLI，把「没有 API 的东西」和「散落各处的 API」封装成结构化 JSON。
 不内置 AI——通过 **CLI + 插件 + Skill 文档 + MCP**，让 Claude Code / Cursor / 自建 Agent 直接调用。
 
