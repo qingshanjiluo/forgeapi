@@ -36,7 +36,7 @@ function j(r) {
 }
 
 /* 1) init */
-const init = run(['init']);
+const init = run(['init', '--no-install'], { timeout: 240000 });
 check('init', init.ok, init.err);
 
 /* 1.5) doctor（确认 chromium 就绪） */

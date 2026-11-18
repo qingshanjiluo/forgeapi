@@ -544,8 +544,15 @@ curl http://127.0.0.1:7842/api/openapi.json   # OpenAPI 3.0.3
 | `GET /api/vault/keys` | 凭据键名（不返回值） |
 | `GET /api/templates` | 模板列表/搜索 |
 | `GET /api/openapi.json` | OpenAPI 描述 |
+| `GET/POST /api/schedules` | 调度列表 / 新建 |
+| `DELETE /api/schedules/:name` | 删除调度 |
+| `POST /api/schedules/:name/enable\|disable` | 启停调度 |
+| `POST /api/schedules/:name/run` | 立即执行调度 |
+| `GET /api/verify` · `POST /api/verify/fix` | 完整性校验 / 重建基线 |
+| `GET/POST /api/signature` | 签名状态 / 批量签名 |
+| `POST /api/batch` | 批量任务 |
 
-Web 控制台七个页签：插件 / 调试 / 规则 / 日志 / 配置 / 模板 / 工作流。
+Web 控制台十个页签：插件 / 调试 / 规则 / 日志 / 配置 / 模板 / 工作流 / 调度 / 校验 / 批量。
 
 ---
 
@@ -692,14 +699,14 @@ skills/forgeapi            可分发的 Skill 包
 npm run build      # tsc
 npm run dev        # tsc --watch
 npm test           # 单元测试（154）
-npm run selftest   # 端到端自验（127 项）
+npm run selftest   # 端到端自验（135 项）
 ```
 
 当前状态：
 
 ```
 单元测试   154 个（8 文件）
-自验       127 项断言，全部 PASS
+自验       135 项断言，全部 PASS
 覆盖       提取器 / 聚合器 / 凭据 / 注册表 / 引擎 / MCP / 并发 / 调度
            / 完整性 / diff / 签名 / pipeline / 批量 / 新四插件
 ```

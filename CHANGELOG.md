@@ -1,5 +1,63 @@
 # CHANGELOG
 
+## 0.9.0
+
+九期：控制台补齐三个页签（调度 / 校验 / 批量）+ 模板市场落地 + init 的 --no-install。
+
+### 控制台（7 → 10 页签）
+
+新增三个页签，覆盖 0.4–0.8 加的所有能力：
+
+- **调度**：列出条目（状态/模式/runs/failures/nextRun）、按插件新建（every 或 cron）、
+  启停、立即执行、删除
+- **校验**：内容基线校验结果（逐插件 OK/FAIL + 原因）、一键重建基线、
+  Ed25519 签名状态（signed/digest-mismatch/signed-invalid/unsigned）与批量签名
+- **批量**：粘贴 JSONL 任务、设并发/重试、执行并看汇总与逐条结果
+
+配套 REST：
+
+| 端点 | 说明 |
+| --- | --- |
+| `GET/POST /api/schedules` | 列表 / 新建 |
+| `DELETE /api/schedules/:name` | 删除 |
+| `POST /api/schedules/:name/enable\|disable` | 启停 |
+| `POST /api/schedules/:name/run` | 立即执行（run 类型） |
+| `GET /api/verify` · `POST /api/verify/fix` | 校验 / 重建基线 |
+| `GET/POST /api/signature` | 签名状态 / 批量签名 |
+| `POST /api/batch` | 批量任务 |
+
+### 模板市场
+
+9 个模板打包成 tgz 发布到 GitHub Release（tag `templates-v1`），
+`templates/registry.json` 全部指向真实下载 URL。跨机实测：
+
+```bash
+forge template remote                    # 9 条，url 均为 https://github.com/.../templates-v1/*.tgz
+forge template add <asset-url>           # 下载 + 解包 + 注册 + 记 integrity
+forge run exchange-rate -p '{"from":"EUR","to":"JPY"}'   # 174.85
+```
+
+新增脚本 `scripts/pack-templates.mjs`（tar -C 直接打内容，无 package/ 前缀）。
+
+### init 加 `--no-install`
+
+自验与 CI 每次跑 `init` 都会重装 `pdfjs-dist`（5MB），拖慢且偶发失败。
+现在 `forge init --no-install` 只装插件不装 npm 依赖，并返回 `depsSkipped`
+（只列真的声明了依赖的插件，实测只有 pdf-text）。
+
+### 修复
+
+- 控制台前端新页签用了模板字符串，破坏 `String.raw` 模板的闭合 → 全改字符串拼接
+- 自验里新增的 4 个 API 断言被插到了 `finally { srv.kill() }` 之后，
+  访问已死的 server 报 ECONNRESET → 移进 try 块
+- `depsSkipped` 把所有插件都列进去了（无依赖插件也返回空数组）→ 改为读 package.json 判断
+
+### 测试
+
+- 自验 127 → **135 项**（+4 控制台 API、+1 pdf-text 依赖检查等）
+- CI smoke 17 项
+- 单元测试保持 **154**
+
 ## 0.8.0
 
 八期：三个本地能力插件（格式化 / 查询 / PDF 读取）。

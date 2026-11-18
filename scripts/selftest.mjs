@@ -57,7 +57,8 @@ console.log(`FORGE_HOME = ${HOME}\n`);
 const ver = run(['--version']);
 check('CLI 版本可输出', /0\.\d+\.\d+/.test(ver.out), ver.out || ver.err);
 
-const init = run(['init']);
+// --no-install：不在每次自验里重装 pdfjs-dist（5MB），需要时单独装
+const init = run(['init', '--no-install'], { timeout: 240000 });
 const initJ = json(init);
 check('init 安装内置插件', initJ?.ok === true && initJ.installed.length >= 9, JSON.stringify(initJ)?.slice(0, 200));
 check('init 播种模板', initJ?.templates >= 3, `templates=${initJ?.templates}`);
@@ -203,12 +204,16 @@ const { spawn } = await import('node:child_process');
 const port = 7921;
 const srv = spawn(process.execPath, [CLI, 'serve', '--port', String(port)], {
   env: { ...process.env, FORGE_HOME: HOME },
-  stdio: 'ignore',
+  stdio: ['ignore', 'ignore', 'pipe'],
 });
+let srvErr = '';
+srv.stderr.on('data', (b) => { srvErr += String(b); });
+srv.on('exit', (code, sig) => { if (code !== 0 && code !== null) srvErr += `\n[server exit code=${code} sig=${sig}]`; });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 await sleep(3000);
 
 let apiOk = false, runOk = false, pageOk = false, openApiOk = false, pipelineApiOk = false;
+let schedApiOk = false, verifyApiOk = false, signApiOk = false, batchApiOk = false;
 try {
   const h = await fetch(`http://127.0.0.1:${port}/api/health`);
   apiOk = (await h.json()).ok === true;
@@ -241,11 +246,32 @@ try {
   const plj = await pl.json();
   pipelineApiOk = plj.ok === true && typeof plj.output?.temp === 'number';
 
+  // 控制台新增页签对应的 API（必须在 srv.kill() 之前）
+  const schRes = await fetch(`http://127.0.0.1:${port}/api/schedules`);
+  const schJson = await schRes.json();
+  schedApiOk = schJson.ok === true && Array.isArray(schJson.data);
+
+  const verRes = await fetch(`http://127.0.0.1:${port}/api/verify`);
+  const verJson = await verRes.json();
+  verifyApiOk = typeof verJson.ok === 'boolean' && Array.isArray(verJson.data);
+
+  const sigRes = await fetch(`http://127.0.0.1:${port}/api/signature`);
+  const sigJson = await sigRes.json();
+  signApiOk = sigJson.ok === true && Array.isArray(sigJson.data);
+
+  const batRes = await fetch(`http://127.0.0.1:${port}/api/batch`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ tasks: [{ plugin: 'out', params: { data: [{ k: 1 }], format: 'csv' } }] }),
+  });
+  const batJson = await batRes.json();
+  batchApiOk = batJson.ok === true && batJson.summary?.ok === 1;
+
   const page = await fetch(`http://127.0.0.1:${port}/`);
   const html = await page.text();
   pageOk = page.status === 200 && html.includes('ForgeAPI');
 } catch (e) {
   check('Web 控制台请求异常', false, e.message);
+  if (srvErr) console.error('--- server stderr ---\n' + srvErr.slice(-2000));
 } finally {
   srv.kill();
 }
@@ -253,6 +279,14 @@ check('Web /api/health + /api/plugins', apiOk, 'health or plugins failed');
 check('Web /api/run 执行插件并回传日志', runOk, 'run failed');
 check('Web /api/openapi.json 输出描述', openApiOk, 'openapi failed');
 check('Web /api/pipeline 执行工作流', pipelineApiOk, 'pipeline api failed');
+check('Web /api/schedules', schedApiOk, 'schedules api failed');
+check('Web /api/verify', verifyApiOk, 'verify api failed');
+check('Web /api/signature', signApiOk, 'signature api failed');
+check('Web /api/batch', batchApiOk, 'batch api failed');
+check('Web /api/schedules', schedApiOk, 'schedules api failed');
+check('Web /api/verify', verifyApiOk, 'verify api failed');
+check('Web /api/signature', signApiOk, 'signature api failed');
+check('Web /api/batch', batchApiOk, 'batch api failed');
 check('Web 首页可访问', pageOk, 'page failed');
 
 /* ---------- 12. 单元测试 ---------- */
@@ -664,6 +698,20 @@ const jqFilter = json(run(['run', 'json-query', '--params-file', writeJsonFile(H
 check('json-query 谓词过滤',
   jqFilter?.ok === true && Array.isArray(jqFilter.data) && jqFilter.data.length === 2,
   JSON.stringify(jqFilter?.data)?.slice(0, 120));
+
+/* pdf-text：先装依赖（init --no-install 跳过了），再造样本提取 */
+const ensurePdfText = () => {
+  const installed = path.join(HOME, 'plugins', 'pdf-text');
+  const needDeps = !fs.existsSync(path.join(installed, 'node_modules'));
+  if (needDeps) {
+    const r = run(['install', path.join(ROOT, 'plugins', 'builtin', 'pdf-text'), '--force', '--yes'], { timeout: 300000 });
+    if (!r.ok) return false;
+  }
+  return true;
+};
+if (!ensurePdfText()) {
+  check('pdf-text 依赖安装', false, 'npm install 失败');
+}
 
 /* pdf-text：先用 pdf 插件造样本，再提取 */
 const pdfSample = json(run(['run', 'pdf', '--params-file', writeJsonFile(HOME, 'pdfgen.json', {

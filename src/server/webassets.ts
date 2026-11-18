@@ -82,7 +82,7 @@ const api = async (p, opt={}) => {
   return r.json();
 };
 
-const TABS = ['插件','调试','规则','日志','配置','模板','工作流'];
+const TABS = ['插件','调试','规则','日志','配置','模板','工作流','调度','校验','批量'];
 let state = { tab:'插件', plugins:[], cur:null, detail:null };
 
 function render() {
@@ -99,7 +99,144 @@ function render() {
   if (state.tab === '配置') { main.append(el('aside'), configPane()); }
   if (state.tab === '模板') { main.append(el('aside'), templatesPane()); }
   if (state.tab === '工作流') { main.append(el('aside'), pipelinePane()); }
+  if (state.tab === '调度') { main.append(el('aside'), schedulePane()); }
+  if (state.tab === '校验') { main.append(el('aside'), verifyPane()); }
+  if (state.tab === '批量') { main.append(el('aside'), batchPane()); }
   root.append(main);
+}
+
+function schedulePane() {
+  const s = el('section');
+  s.append(el('h2',{},'调度'));
+  const out = el('pre',{},'加载中…');
+
+  const nameIn = el('input',{placeholder:'调度名，如 hourly'});
+  const pluginSel = el('select');
+  for (const p of state.plugins) pluginSel.append(el('option',{value:p.name},p.name));
+  const everyIn = el('input',{placeholder:'间隔秒（与 cron 二选一）'});
+  const cronIn = el('input',{placeholder:'cron：0 * * * *'});
+  const paramsIn = el('textarea',{placeholder:'{"city":"上海"}','style':'min-height:60px'});
+
+  const refresh = async () => {
+    const r = await api('/schedules');
+    const list = r.data || [];
+    if (!list.length) { out.textContent = '（没有调度）'; return; }
+    out.textContent = list.map(e => {
+      const when = e.cron ? 'cron '+e.cron : 'every '+e.everySec+'s';
+      return (e.enabled ? '[on ]' : '[off]') + ' ' + e.name.padEnd(18) + ' ' +
+        e.kind.padEnd(9) + ' ' + when.padEnd(22) + ' runs=' + e.runs + ' fail=' + e.failures +
+        (e.nextRun ? ' next=' + e.nextRun.slice(5, 19) : '');
+    }).join('\n');
+  };
+
+  s.append(el('div',{class:'row'}, nameIn, pluginSel,
+    el('button',{class:'act primary',onclick:async()=>{
+      let params = {};
+      try { params = paramsIn.value.trim() ? JSON.parse(paramsIn.value) : {}; }
+      catch(e){ alert('参数 JSON 非法: '+e.message); return; }
+      const r = await api('/schedules',{method:'POST',body:JSON.stringify({
+        name: nameIn.value.trim(),
+        kind: 'run',
+        plugin: pluginSel.value,
+        params,
+        everySec: everyIn.value.trim() || undefined,
+        cron: cronIn.value.trim() || undefined,
+      })});
+      alert(r.ok ? '已添加' : '失败: '+r.error);
+      refresh();
+    }},'添加')));
+  s.append(el('div',{class:'row'}, everyIn, cronIn));
+  s.append(paramsIn);
+  s.append(el('div',{class:'row'},
+    el('button',{class:'act',onclick:refresh},'刷新'),
+    el('button',{class:'act',onclick:async()=>{
+      const n = prompt('要立即执行的调度名');
+      if (!n) return;
+      const r = await api('/schedules/'+encodeURIComponent(n)+'/run',{method:'POST'});
+      alert(r.ok ? '执行成功: '+(r.summary||'') : '失败: '+(r.error||r.summary||''));
+      refresh();
+    }},'立即执行'),
+    el('button',{class:'act',onclick:async()=>{
+      const n = prompt('要删除的调度名');
+      if (!n) return;
+      await api('/schedules/'+encodeURIComponent(n),{method:'DELETE'});
+      refresh();
+    }},'删除'),
+  ));
+  s.append(out);
+  refresh();
+  return s;
+}
+
+function verifyPane() {
+  const s = el('section');
+  s.append(el('h2',{},'完整性 / 签名'));
+  const content = el('div');
+  const refreshVerify = async () => {
+    content.innerHTML = '';
+    const r = await api('/verify');
+    const items = r.data || [];
+    content.append(el('div',{class:'row'}, el('strong',{},'内容基线校验'),
+      el('button',{class:'act',onclick:async()=>{
+        const n = prompt('重建基线的插件名（留空=全部）');
+        await api('/verify/fix',{method:'POST',body:JSON.stringify({name:n||undefined})});
+        refreshVerify();
+      }},'重建基线')));
+    const pre1 = el('pre',{});
+    pre1.textContent = items.length
+      ? items.map(i => (i.ok ? '[OK]  ' : '[FAIL]') + ' ' + i.name.padEnd(18) + ' ' + (i.ok ? '' : (i.reason || ''))).join('\n')
+      : '（无插件）';
+    content.append(pre1);
+  };
+  const refreshSig = async () => {
+    content.append(el('div',{class:'row',style:'margin-top:16px'},
+      el('strong',{},'Ed25519 签名状态'),
+      el('button',{class:'act',onclick:async()=>{
+        const n = prompt('签名哪个插件（留空=全部）');
+        const r = await api('/signature',{method:'POST',body:JSON.stringify({name:n||undefined,signer:'console'})});
+        alert(r.ok ? '已签名 '+((r.signed||[]).length)+' 个' : '失败: '+JSON.stringify(r.failed));
+        refreshVerify();
+      }},'签名')));
+    const r = await api('/signature');
+    const list = r.data || [];
+    const pre2 = el('pre',{});
+    pre2.textContent = list.length
+      ? list.map(x => String(x.check.state).padEnd(16) + ' ' + x.name + (x.check.keyId ? '  key=' + x.check.keyId : '')).join('\n')
+      : '（无插件）';
+    content.append(pre2);
+  };
+  s.append(content);
+  refreshVerify().then(refreshSig);
+  return s;
+}
+
+function batchPane() {
+  const s = el('section');
+  s.append(el('h2',{},'批量任务'));
+  const ta = el('textarea',{placeholder:'每行一个任务（JSONL）\n{"id":"a","plugin":"weather","params":{"city":"上海"}}\n{"id":"b","plugin":"out","params":{"data":[{"k":1}],"format":"csv"}}','style':'min-height:140px'});
+  const conc = el('input',{placeholder:'并发（默认 3）',style:'max-width:140px'});
+  const retry = el('input',{placeholder:'重试次数（默认 1）',style:'max-width:160px'});
+  const out = el('pre',{},'(未执行)');
+  s.append(el('div',{class:'row'}, conc, retry,
+    el('button',{class:'act primary',onclick:async()=>{
+      const lines = ta.value.split('\n').map(x=>x.trim()).filter(Boolean);
+      const tasks = [];
+      for (const [i, line] of lines.entries()) {
+        try { tasks.push(JSON.parse(line)); }
+        catch(e){ out.textContent = '第 ' + (i+1) + ' 行不是合法 JSON: ' + e.message; return; }
+      }
+      if (!tasks.length) { out.textContent = '任务为空'; return; }
+      out.textContent = '执行中…';
+      const r = await api('/batch',{method:'POST',body:JSON.stringify({
+        tasks,
+        concurrency: Number(conc.value||3),
+        retry: Number(retry.value||1),
+      })});
+      out.textContent = '# 汇总\n'+JSON.stringify(r.summary,null,2)+'\n\n# 结果\n'+JSON.stringify(r.results,null,2);
+    }},'执行')));
+  s.append(ta);
+  s.append(out);
+  return s;
 }
 
 function pipelinePane() {

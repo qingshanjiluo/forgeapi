@@ -25,25 +25,43 @@ export function builtinTemplateRoot(): string {
   return path.resolve(__dirname, '../../templates');
 }
 
-export async function initWorkspace(opts: { force?: boolean; quiet?: boolean } = {}): Promise<{ installed: string[]; skipped: string[]; templates: number }> {
+export async function initWorkspace(
+  opts: { force?: boolean; quiet?: boolean; noInstall?: boolean } = {},
+): Promise<{ installed: string[]; skipped: string[]; templates: number; depsSkipped: string[] }> {
   const paths = resolvePaths();
   ensureDirs(paths);
   const root = builtinPluginRoot();
   const reg = new Registry(paths);
   const installed: string[] = [];
   const skipped: string[] = [];
+  const depsSkipped: string[] = [];
 
   if (fs.existsSync(root)) {
     for (const name of fs.readdirSync(root)) {
       const dir = path.join(root, name);
       if (!fs.statSync(dir).isDirectory()) continue;
       if (reg.has(name) && !opts.force) { skipped.push(name); continue; }
-      await installPlugin(paths, { source: dir, force: true, yes: true });
+      const r = await installPlugin(paths, {
+        source: dir,
+        force: true,
+        yes: true,
+        noInstall: Boolean(opts.noInstall),
+      });
       installed.push(name);
+      // 只记录"声明了依赖但被跳过"的插件
+      if (opts.noInstall) {
+        try {
+          const pkgFile = path.join(dir, 'package.json');
+          if (fs.existsSync(pkgFile)) {
+            const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf8').replace(/^\uFEFF/, ''));
+            if (Object.keys(pkg.dependencies || {}).length) depsSkipped.push(name);
+          }
+        } catch { /* ignore */ }
+      }
     }
   }
 
   const tplRoot = builtinTemplateRoot();
   const templates = await seedTemplates(paths, tplRoot);
-  return { installed, skipped, templates };
+  return { installed, skipped, templates, depsSkipped };
 }

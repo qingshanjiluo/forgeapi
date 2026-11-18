@@ -14,6 +14,10 @@ import { vaultFor } from '../core/credentials.js';
 import { ensureWebAssets } from './webassets.js';
 import { readPipeline, runPipeline, normalizePipeline } from '../core/pipeline.js';
 import { buildOpenApi } from './openapi.js';
+import { loadSchedules, addSchedule, removeSchedule, setEnabled, markRun } from '../core/schedule.js';
+import { signatureStatusAll, signPlugin, defaultKeyPaths } from '../core/signing.js';
+import { verifyAll, lockBaseline, type VerifyItem } from '../core/integrity.js';
+import { readTasks, runBatch, summarizeBatch } from '../core/scheduler.js';
 import type { Logger } from '../core/log.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -282,6 +286,147 @@ export async function startServer(opts: ServerOptions): Promise<http.Server> {
     /* OpenAPI 描述 */
     if (p === '/api/openapi.json' && method === 'GET') {
       return json(res, 200, buildOpenApi(paths));
+    }
+
+    /* ---------- 调度 ---------- */
+    if (p === '/api/schedules' && method === 'GET') {
+      return json(res, 200, { ok: true, data: loadSchedules(paths).entries });
+    }
+    if (p === '/api/schedules' && method === 'POST') {
+      const body = await readBody(req);
+      try {
+        const entry = addSchedule(paths, {
+          name: String(body.name || ''),
+          kind: (body.kind || 'run') as 'run' | 'batch' | 'watch' | 'pipeline',
+          args: body.args || { plugin: body.plugin, params: body.params || {} },
+          everySec: body.everySec ? Number(body.everySec) : undefined,
+          cron: body.cron ? String(body.cron) : undefined,
+        });
+        return json(res, 200, { ok: true, data: entry });
+      } catch (e) {
+        return json(res, 400, { ok: false, error: (e as Error).message });
+      }
+    }
+    const mSched = p.match(/^\/api\/schedules\/([^/]+)$/);
+    if (mSched && method === 'DELETE') {
+      const name = decodeURIComponent(mSched[1]);
+      const removed = removeSchedule(paths, name);
+      return json(res, removed ? 200 : 404, { ok: removed, removed: name });
+    }
+    const mSchedToggle = p.match(/^\/api\/schedules\/([^/]+)\/(enable|disable)$/);
+    if (mSchedToggle && method === 'POST') {
+      const name = decodeURIComponent(mSchedToggle[1]);
+      const e = setEnabled(paths, name, mSchedToggle[2] === 'enable');
+      return json(res, e ? 200 : 404, { ok: Boolean(e), data: e });
+    }
+    const mSchedRun = p.match(/^\/api\/schedules\/([^/]+)\/run$/);
+    if (mSchedRun && method === 'POST') {
+      const name = decodeURIComponent(mSchedRun[1]);
+      const entry = loadSchedules(paths).entries.find((x) => x.name === name);
+      if (!entry) return json(res, 404, { ok: false, error: '未找到调度' });
+      try {
+        let ok = false;
+        let summary = '';
+        if (entry.kind === 'run') {
+          const out = await engine.run(String(entry.args.plugin), {
+            params: (entry.args.params as any) || {},
+            logger,
+            reuseBrowser: true,
+          });
+          ok = out.ok;
+          summary = out.ok ? 'ok' : (out.error || '').slice(0, 200);
+        } else {
+          summary = `控制台只支持 run 类型，${entry.kind} 请走 CLI`;
+        }
+        const updated = markRun(paths, name, { ok, summary });
+        return json(res, 200, { ok, summary, data: updated });
+      } catch (e) {
+        markRun(paths, name, { ok: false, summary: (e as Error).message });
+        return json(res, 500, { ok: false, error: (e as Error).message });
+      }
+    }
+
+    /* ---------- 校验 / 签名 ---------- */
+    if (p === '/api/verify' && method === 'GET') {
+      const items = verifyAll(paths);
+      return json(res, 200, { ok: items.every((i) => i.ok), data: items });
+    }
+    if (p === '/api/verify/fix' && method === 'POST') {
+      const body = await readBody(req);
+      const targets = body.name ? [String(body.name)] : new Registry(paths).all().map((e) => e.name);
+      const done = targets.map((n) => lockBaseline(paths, n)).filter(Boolean);
+      return json(res, 200, { ok: true, data: done });
+    }
+    if (p === '/api/signature' && method === 'GET') {
+      return json(res, 200, {
+        ok: true,
+        data: signatureStatusAll(paths, { publicKeyPath: defaultKeyPaths(paths).publicKey }),
+      });
+    }
+    if (p === '/api/signature' && method === 'POST') {
+      const body = await readBody(req);
+      const targets = body.name ? [String(body.name)] : new Registry(paths).all().map((e) => e.name);
+      const signed: unknown[] = [];
+      const failed: { plugin: string; error: string }[] = [];
+      for (const t of targets) {
+        try {
+          const r = signPlugin(paths, t, { signer: body.signer ? String(body.signer) : undefined });
+          if (r) signed.push(r); else failed.push({ plugin: t, error: '未安装' });
+        } catch (e) {
+          failed.push({ plugin: t, error: (e as Error).message });
+        }
+      }
+      return json(res, failed.length ? 400 : 200, { ok: failed.length === 0, signed, failed });
+    }
+
+    /* ---------- 批量 ---------- */
+    if (p === '/api/batch' && method === 'POST') {
+      const body = await readBody(req);
+      let tasks;
+      try {
+        tasks = body.tasks
+          ? (Array.isArray(body.tasks) ? body.tasks : [body.tasks])
+          : readTasks(String(body.file || ''));
+      } catch (e) {
+        return json(res, 400, { ok: false, error: (e as Error).message });
+      }
+      if (!tasks.length) return json(res, 400, { ok: false, error: '任务为空' });
+
+      const logs: string[] = [];
+      const results = await runBatch(
+        tasks,
+        async (task) => {
+          const out = await engine.run(task.plugin, {
+            params: task.params || {},
+            command: task.command,
+            logger,
+            reuseBrowser: true,
+          });
+          callLog.append(callLog.newEntry({
+            plugin: task.plugin, command: task.command, params: task.params || {},
+            ok: out.ok, ms: out.ms,
+            summary: out.ok ? 'ok' : (out.error || '').slice(0, 200),
+            error: out.error?.slice(0, 2000), exitCode: out.ok ? 0 : 1,
+          }));
+          return { ok: out.ok, data: out.data, error: out.error, ms: out.ms };
+        },
+        {
+          concurrency: Number(body.concurrency || 3),
+          retry: Number(body.retry || 1),
+          onProgress: (ev) => logs.push(`${ev.state}:${ev.task.plugin}`),
+        },
+      );
+      const summary = summarizeBatch(results);
+      return json(res, 200, {
+        ok: summary.fail === 0,
+        summary,
+        results: results.map((r) => ({
+          index: r.index, plugin: r.task.plugin, id: r.task.id ?? null,
+          ok: r.ok, ms: r.ms, attempts: r.attempts,
+          ...(r.ok ? { data: r.data } : { error: r.error }),
+        })),
+        logs,
+      });
     }
 
     /* 日志 */

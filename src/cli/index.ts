@@ -536,8 +536,12 @@ program
   .command('init')
   .description('初始化工作区：安装内置插件、播种模板库')
   .option('-f, --force', '重装内置插件')
+  .option('--no-install', '不自动安装插件 npm 依赖（CI / 离线环境用）')
   .action(async (opts) => {
-    const r = await initWorkspace({ force: Boolean(opts.force) });
+    const r = await initWorkspace({
+      force: Boolean(opts.force),
+      noInstall: opts.install === false,
+    });
     finish(true, { ok: true, ...r, paths });
   });
 
