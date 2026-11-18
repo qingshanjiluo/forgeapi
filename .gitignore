@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-templates/
 .forge-local/
 .forge-ci/
 *.tgz
@@ -7,10 +8,12 @@ dist/
 *.log
 tmp-*.json
 
-# 临时文件
+# 临时文件（commit message / release notes / 调试脚本）
 .msg.txt
+.m*.txt
 .rn*.md
 .patch-*.mjs
 .dbg-*.mjs
+.p*.mjs
 .release-notes*.md
 .commit-msg.txt
