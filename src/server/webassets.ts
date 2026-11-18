@@ -7,17 +7,11 @@ const WEB = path.resolve(__dirname, '..', 'web');
 
 function ensure(): void {
   fs.mkdirSync(path.join(WEB, 'assets'), { recursive: true });
-  // 内容比对：内嵌资源升级后要覆盖旧文件，否则浏览器一直跑旧 bundle
-  const writeIfChanged = (file: string, content: string) => {
-    try {
-      if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === content) return false;
-    } catch { /* 读失败就当需要重写 */ }
-    fs.writeFileSync(file, content, 'utf8');
-    return true;
-  };
-  writeIfChanged(path.join(WEB, 'index.html'), INDEX_HTML);
-  writeIfChanged(path.join(WEB, 'assets', 'app.js'), APP_JS);
-  writeIfChanged(path.join(WEB, 'assets', 'style.css'), STYLE_CSS);
+  // 始终覆盖：内嵌资源是版本的一部分，宁可每次写 3 个小文件，
+  // 也不能因为比对逻辑失效让浏览器一直跑旧 bundle（曾踩过）
+  fs.writeFileSync(path.join(WEB, 'index.html'), INDEX_HTML, 'utf8');
+  fs.writeFileSync(path.join(WEB, 'assets', 'app.js'), APP_JS, 'utf8');
+  fs.writeFileSync(path.join(WEB, 'assets', 'style.css'), STYLE_CSS, 'utf8');
 }
 
 const INDEX_HTML = `<!doctype html>
