@@ -1,6 +1,6 @@
 {
   "name": "forgeapi",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "把网页、公开服务、第三方来源锻造成 AI 能调用的统一接口",
   "type": "module",
   "bin": {
@@ -41,7 +41,9 @@
     "test": "node --test dist/test/*.test.js",
     "selftest": "node scripts/selftest.mjs",
     "bench": "node scripts/bench-browser.mjs",
-    "prepublishOnly": "tsc"
+    "prepublishOnly": "tsc",
+    "check:plugins": "node scripts/check-plugins.mjs",
+    "prebuild": "node scripts/check-plugins.mjs"
   },
   "keywords": [
     "api",

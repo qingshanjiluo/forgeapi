@@ -64,7 +64,7 @@ check('init 安装内置插件', initJ?.ok === true && initJ.installed.length >=
 check('init 播种模板', initJ?.templates >= 3, `templates=${initJ?.templates}`);
 
 const list = json(run(['list', '--json']));
-check('list 返回 20 个内置插件', Array.isArray(list) && list.length >= 20, `len=${list?.length}`);
+check('list 返回 21 个内置插件', Array.isArray(list) && list.length >= 21, `len=${list?.length}`);
 check('list 含 forum/webpage/weather', ['forum', 'webpage', 'weather'].every((n) => list?.some((p) => p.name === n)));
 
 /* ---------- 2. 自检 ---------- */
@@ -816,6 +816,34 @@ check('csv 解析（引号/逗号/多行/类型推断）',
   csvRes.data[1].price === 899 &&
   String(csvRes.data[1].note).includes('未有回复'),
   JSON.stringify(csvRes?.data)?.slice(0, 180));
+
+/* ---------- 27.9 0.14.0：transform 表达式计算 ---------- */
+const trRes = json(run(['run', 'transform', '--params-file', writeJsonFile(HOME, 'tr.json', {
+  data: [{ name: '键盘', price: 1299 }, { name: '鼠标', price: 99 }],
+  expr: {
+    price_usd: 'F.round(it.price / 7.2, 2)',
+    label: "it.name + ' (' + it.price + ')'",
+    level: "it.price > 1000 ? '高价' : '低价'",
+    rank: 'i + 1',
+  },
+})]));
+check('transform 换算/拼接/条件/序号',
+  trRes?.ok === true &&
+  Array.isArray(trRes.data) &&
+  trRes.data[0].price_usd === 180.42 &&
+  trRes.data[0].label === '键盘 (1299)' &&
+  trRes.data[0].level === '高价' &&
+  trRes.data[1].rank === 2,
+  JSON.stringify(trRes?.data)?.slice(0, 160));
+
+const trFail = json(run(['run', 'transform', '--params-file', writeJsonFile(HOME, 'tr2.json', {
+  data: [{ a: 1 }],
+  expr: { bad: 'it.nope.deep + 1' },
+  onError: 'null',
+})]));
+check('transform 单字段失败按 null 处理',
+  trFail?.ok === true && trFail.data[0].bad === null && Array.isArray(trFail.meta?.errors),
+  JSON.stringify(trFail?.meta)?.slice(0, 120));
 
 /* ---------- 28. 浏览器复用（同进程两次调用） ---------- */
 try {

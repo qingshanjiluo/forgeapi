@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## 0.14.0
+
+十四期：`transform` 表达式计算插件（20 → 21）+ 插件语法门禁。
+
+### 新增插件
+
+**`transform`** —— 字段级表达式计算
+- 给「新字段 → 表达式」，对每条数据求值
+- 上下文：`it`（当前条目）/ `i`（序号）/ `all`（全量）/ `F`（函数）
+- 内置函数：`round/floor/ceil/abs/num`、`str/lower/upper/trim/len/split/join/slice/replace/includes/match`、
+  `pick/get`、`now/date`、`has/ifelse`、`scale`
+- 表达式一次性编译，逐条只做调用
+- `onError: null|throw|skip` + `meta.errors` 明细
+- `keepOriginals: false` 只输出计算结果
+
+补齐 pipeline 只能搬运不能计算的缺口。
+
+### 新增门禁
+
+**`scripts/check-plugins.mjs`** —— 遍历 `plugins/builtin` 与 `templates` 下所有 `.mjs`，逐个 `node --check`。
+
+理由：开发中连续三次把 TypeScript 语法（`as X`、`const x: T = `）写进 `.mjs`，
+直到运行时才报错。这个脚本 5 秒内挡住同类问题，已挂到 `prebuild`。
+
+### 质量
+
+- 自验 140 → **142 项**（+transform 换算/拼接/条件/序号、+单字段失败处理）
+- 单元测试 154；CI smoke 17；插件 20 → 21；语法门禁 20/20
+
 ## 0.13.0
 
 十三期：`csv` CSV/TSV 读取插件（19 → 20），补「文件输入」侧。

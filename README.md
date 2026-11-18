@@ -77,7 +77,7 @@ node dist/cli/index.js run weather -p '{"city":"上海","days":2}'
 ```bash
 npm link
 forge doctor                          # 环境自检
-forge list                            # 20 个内置插件
+forge list                            # 21 个内置插件
 ```
 
 工作区默认在 `~/.forgeapi`，可用 `FORGE_HOME` 覆盖：
@@ -98,7 +98,7 @@ forge list                            # 20 个内置插件
 
 ---
 
-## 20 个内置插件
+## 21 个内置插件
 
 `forge init` 后即可用。全部**免密钥**，除 GitHub 有未认证限流。
 
@@ -726,7 +726,7 @@ npm pack                                  # → forgeapi-0.7.1.tgz（149 文件 
 mkdir /tmp/t && cd /tmp/t && npm init -y
 npm install /path/to/forgeapi-0.7.1.tgz
 npx forge --version                       # 0.7.1
-npx forge init                            # 20 插件 + 9 模板
+npx forge init                            # 21 插件 + 9 模板
 npx forge mcp --list                      # 16 工具（13 插件 + 3 子命令）
 ```
 
