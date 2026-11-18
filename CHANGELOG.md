@@ -1,5 +1,47 @@
 # CHANGELOG
 
+## 0.14.1
+
+修 0.14.0 遗留：控制台「工作流」页签的候选列表是空的。
+
+### 问题
+
+GET /api/pipeline/list 只扫工作区的 pipelines/ 目录。新装工作区里该目录不存在，
+所以页签一打开只有一句"工作区 pipelines/ 目录为空；可直接填路径" —— 得手动敲路径才能用。
+
+### 修法
+
+列表改为两处扫描、按 name 去重合并：
+
+1. <FORGE_HOME>/pipelines/（用户自己的，排前面）
+2. 随包 examples/（6 个工作流，兜底）
+
+返回项多一个 source 字段（workspace / examples），前端无需改动即可显示。
+
+现在新工作区打开页签就有 6 个可点：
+
+    examples  compose-multi   examples/compose-multi.json
+    examples  conditional     examples/conditional.json
+    examples  daily-brief     examples/daily-brief.yaml
+    examples  search-meta     examples/search-meta.yaml
+    examples  search-read     examples/search-read.yaml
+    examples  site-digest     examples/site-digest.yaml
+
+### 实测
+
+POST /api/pipeline 跑 examples/search-read.yaml（input: query=rust, limit=2）：
+
+    ok = true
+    steps = search:true -> detail:true(3)
+    output.query = rust
+    output.total = 10
+    output.pages = 3 条
+    ms = 28002
+
+### 质量
+
+- 自验 142 → 143 项（+pipeline/list 非空断言）
+
 ## 0.14.0
 
 十四期：`transform` 表达式计算插件（20 → 21）+ 插件语法门禁。

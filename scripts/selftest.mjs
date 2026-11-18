@@ -213,7 +213,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 await sleep(3000);
 
 let apiOk = false, runOk = false, pageOk = false, openApiOk = false, pipelineApiOk = false;
-let schedApiOk = false, verifyApiOk = false, signApiOk = false, batchApiOk = false;
+let schedApiOk = false, verifyApiOk = false, signApiOk = false, batchApiOk = false, pipelineListOk = false;
 try {
   const h = await fetch(`http://127.0.0.1:${port}/api/health`);
   apiOk = (await h.json()).ok === true;
@@ -269,6 +269,12 @@ try {
   const page = await fetch(`http://127.0.0.1:${port}/`);
   const html = await page.text();
   pageOk = page.status === 200 && html.includes('ForgeAPI');
+
+  // 工作流下拉不能是空的：pipelines/ 为空时要回落到随包 examples/
+  const plRes = await fetch(`http://127.0.0.1:${port}/api/pipeline/list`);
+  const plJson = await plRes.json();
+  pipelineListOk = plJson.ok === true && Array.isArray(plJson.data) && plJson.data.length >= 5
+    && plJson.data.every((x) => x.name && x.file);
 } catch (e) {
   check('Web 控制台请求异常', false, e.message);
   if (srvErr) console.error('--- server stderr ---\n' + srvErr.slice(-2000));
@@ -279,6 +285,7 @@ check('Web /api/health + /api/plugins', apiOk, 'health or plugins failed');
 check('Web /api/run 执行插件并回传日志', runOk, 'run failed');
 check('Web /api/openapi.json 输出描述', openApiOk, 'openapi failed');
 check('Web /api/pipeline 执行工作流', pipelineApiOk, 'pipeline api failed');
+check('Web /api/pipeline/list 有可选工作流', pipelineListOk, 'pipeline list empty');
 check('Web /api/schedules', schedApiOk, 'schedules api failed');
 check('Web /api/verify', verifyApiOk, 'verify api failed');
 check('Web /api/signature', signApiOk, 'signature api failed');

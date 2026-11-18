@@ -270,16 +270,31 @@ export async function startServer(opts: ServerOptions): Promise<http.Server> {
       });
     }
 
-    /* 工作流列表（工作区 pipelines 目录） */
+    /* 工作流列表：工作区 pipelines/ 优先，再补随包 examples/（去重） */
     if (p === '/api/pipeline/list' && method === 'GET') {
-      const dir = path.join(paths.root, 'pipelines');
-      const items: { name: string; file: string }[] = [];
-      if (fs.existsSync(dir)) {
+      const items: { name: string; file: string; source: string }[] = [];
+      const seen = new Set<string>();
+      const scan = (dir: string, source: string) => {
+        if (!fs.existsSync(dir)) return;
         for (const f of fs.readdirSync(dir)) {
           if (!/\.(ya?ml|json)$/i.test(f)) continue;
-          items.push({ name: f.replace(/\.(ya?ml|json)$/i, ''), file: path.join(dir, f) });
+          const name = f.replace(/\.(ya?ml|json)$/i, '');
+          if (seen.has(name)) continue;
+          seen.add(name);
+          items.push({ name, file: path.join(dir, f), source });
         }
-      }
+      };
+      // 用户自己的在前
+      scan(path.join(paths.root, 'pipelines'), 'workspace');
+      // 随包示例在后，保证控制台一打开就有东西可选
+      // 找 examples/：先从 cwd 起，再从 __dirname 逐级上溯（dist/server → 项目根）
+      const candidates = [
+        path.join(process.cwd(), 'examples'),
+        path.join(__dirname, '..', '..', '..', 'examples'),
+        path.join(__dirname, '..', '..', 'examples'),
+      ];
+      const examplesDir = candidates.find((d) => fs.existsSync(d)) || candidates[0];
+      scan(examplesDir, 'examples');
       return json(res, 200, { ok: true, data: items });
     }
 
