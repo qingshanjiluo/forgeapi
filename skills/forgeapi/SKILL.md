@@ -37,7 +37,7 @@ forge doctor                      # 环境自检（chromium 是否就绪）
 需要按场景查配方时，读仓库里的 `docs/DATA-COOKBOOK.md`（按「我要什么」组织，
 含陌生页面侦察、列表抓取、登录站、批量、管线、监控、失败对照）。
 
-## 19 个内置插件（`forge init` 后即可用）
+## 20 个内置插件（`forge init` 后即可用）
 
 | 插件 | 用途 | 关键参数 |
 | --- | --- | --- |
@@ -60,6 +60,7 @@ forge doctor                      # 环境自检（chromium 是否就绪）
 | `crawl` | 站点爬取（入口 + 深度/限页/robots） | `url`, `maxDepth`, `maxPages`, `urlPattern` |
 | `form` | 通用表单提交（填字段 → 提交 → 提取） | `url`, `fields`, `submit`, `waitFor`, `extract` |
 | `ws` | WebSocket 采集（订阅 + 收 N 帧） | `url`, `subscribe`, `messages`, `duration`, `filter` |
+| `csv` | CSV/TSV 读取 → JSON | `file`/`url`, `delimiter`, `header`, `inferTypes` |
 
 **典型组合**：抓完数据要贴文档 →
 ```bash

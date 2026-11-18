@@ -426,6 +426,29 @@ forge run ws -p '{"url":"wss://...","headers":{"authorization":"Bearer ${cred:TO
 
 **订阅格式**：浏览器 DevTools → Network → WS → 看客户端发了什么帧，照抄进 `subscribe`。
 
+## 十四点六、读表格（CSV / TSV）
+
+数据在文件里时，先转成 JSON 再加工。
+
+```bash
+# 本地 CSV（自动识别分隔符）
+forge run csv -p '{"file":"./data.csv"}'
+
+# 远程 + 限量
+forge run csv -p '{"url":"https://example.com/data.csv","limit":100}'
+
+# TSV / 无表头
+forge run csv -p '{"file":"./raw.tsv","delimiter":"tab","header":false,"columns":["时间","价格"]}'
+
+# 读完直接加工成表格贴文档
+forge run csv -p '{"file":"./in.csv"}' > rows.json
+forge run json-query -p '{"file":"rows.json","path":"$","sortBy":"price","order":"desc","limit":10}' > top.json
+forge run out -p '{"file":"top.json","format":"markdown"}'
+```
+
+支持 RFC 4180：引号内逗号、双写引号、字段内换行、CRLF、BOM。
+`inferTypes` 会推断数字/布尔/null（`1,299` 这种含逗号保留字符串）。
+
 ## 十四点五、从远端装模板
 
 模板库有 9 个包发布在 GitHub Release，换台机器也能一键装。

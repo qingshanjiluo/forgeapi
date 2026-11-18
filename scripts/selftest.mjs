@@ -64,7 +64,7 @@ check('init 安装内置插件', initJ?.ok === true && initJ.installed.length >=
 check('init 播种模板', initJ?.templates >= 3, `templates=${initJ?.templates}`);
 
 const list = json(run(['list', '--json']));
-check('list 返回 19 个内置插件', Array.isArray(list) && list.length >= 19, `len=${list?.length}`);
+check('list 返回 20 个内置插件', Array.isArray(list) && list.length >= 20, `len=${list?.length}`);
 check('list 含 forum/webpage/weather', ['forum', 'webpage', 'weather'].every((n) => list?.some((p) => p.name === n)));
 
 /* ---------- 2. 自检 ---------- */
@@ -796,6 +796,26 @@ check('ws 采集 N 帧并解析 JSON',
   wsRes.data.frames.length === 4 &&
   typeof wsRes.data.frames[1]?.value?.price === 'number',
   JSON.stringify({ count: wsRes?.data?.count, reason: wsRes?.data?.reason })?.slice(0, 120));
+
+/* ---------- 27.8 0.13.0：csv 读取 ---------- */
+const csvPath = path.join(HOME, 'in.csv');
+fs.writeFileSync(csvPath, [
+  'name,price,note,active',
+  '"机械键盘, 87键","1,299",好用的,true',
+  '显示器,899,"多次询价',
+  '未有回复",false',
+].join('\n'), 'utf8');
+
+const csvRes = json(run(['run', 'csv', '--params-file', writeJsonFile(HOME, 'csv.json', { file: csvPath })]));
+check('csv 解析（引号/逗号/多行/类型推断）',
+  csvRes?.ok === true &&
+  Array.isArray(csvRes.data) &&
+  csvRes.data.length === 2 &&
+  csvRes.data[0].name === '机械键盘, 87键' &&
+  csvRes.data[0].active === true &&
+  csvRes.data[1].price === 899 &&
+  String(csvRes.data[1].note).includes('未有回复'),
+  JSON.stringify(csvRes?.data)?.slice(0, 180));
 
 /* ---------- 28. 浏览器复用（同进程两次调用） ---------- */
 try {
