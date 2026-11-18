@@ -705,6 +705,33 @@ npm run selftest   # 端到端自验（122 项）
 MCP 协议六环节、批量汇总、完整性篡改检测、伪造签名识别、cron 解析、
 工作流执行与条件跳过、浏览器池加速、截图/PDF/页面画像/站点地图。
 
+### 发布包验证（可复现）
+
+```bash
+npm pack                                  # → forgeapi-0.7.1.tgz（149 文件 / 198KB）
+mkdir /tmp/t && cd /tmp/t && npm init -y
+npm install /path/to/forgeapi-0.7.1.tgz
+npx forge --version                       # 0.7.1
+npx forge init                            # 13 插件 + 9 模板
+npx forge mcp --list                      # 16 工具（13 插件 + 3 子命令）
+```
+
+包内含：`dist` / `plugins` / `templates` / `examples` / `docs` / `skills` / `scripts`
++ README / CHANGELOG / LICENSE。
+
+### CI
+
+`.github/workflows/ci.yml`：Node 20 / 22 双矩阵，11 步
+
+```
+checkout → setup-node(cache npm) → npm ci → build → 单元测试
+→ playwright install chromium → node scripts/ci-smoke.mjs（17 项断言）
+```
+
+`ci-smoke.mjs` 覆盖：init、doctor、插件表 ≥13、schema/skill、
+MCP 工具表 schema 合规、pipeline dry-run、vault 三步、
+install + verify、keygen + sign + trust verify、batch。
+
 ### 已知边界
 
 | 项 | 说明 |
