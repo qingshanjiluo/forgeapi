@@ -1,6 +1,7 @@
-﻿node_modules/
+node_modules/
 dist/
 .forge-local/
+.forge-ci/
 *.tgz
 .DS_Store
 *.log

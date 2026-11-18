@@ -39,6 +39,11 @@ function j(r) {
 const init = run(['init']);
 check('init', init.ok, init.err);
 
+/* 1.5) doctor（确认 chromium 就绪） */
+const doc = j(run(['doctor']));
+check('doctor playwright ok', doc?.playwright === 'ok', String(doc?.playwright));
+check('doctor chromium launched', doc?.chromium === 'launched', String(doc?.chromium));
+
 /* 2) list >= 13 */
 const list = j(run(['list', '--json']));
 check('list >= 13 插件', Array.isArray(list) && list.length >= 13, `len=${list?.length}`);
