@@ -46,7 +46,7 @@ check('doctor chromium launched', doc?.chromium === 'launched', String(doc?.chro
 
 /* 2) list >= 13 */
 const list = j(run(['list', '--json']));
-check('list >= 18 插件', Array.isArray(list) && list.length >= 18, `len=${list?.length}`);
+check('list >= 19 插件', Array.isArray(list) && list.length >= 19, `len=${list?.length}`);
 
 /* 3) schema / skill */
 check('schema weather', run(['schema', 'weather']).ok);

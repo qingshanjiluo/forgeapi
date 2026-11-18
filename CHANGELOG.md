@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 0.12.0
+
+十二期：`ws` WebSocket 采集插件（18 → 19）。
+
+### 新增插件
+
+**`ws`** —— 连接 → 可选订阅 → 收 N 帧 → 输出
+- 依赖 Node 22+ 内置 `WebSocket`（undici），零外部依赖
+- `headers` 支持 `${cred:KEY}` 插值（Bearer 鉴权）
+- `subscribe`：对象自动 JSON 序列化，数组依次发送
+- 三种结束条件（谁先到算谁）：收满 `messages` / `duration` 到时 / `idleMs` 无新帧
+- `parseJson` 解析 JSON 帧；`filter` 只留含关键词的帧；`binarySkip` 跳二进制
+- 每帧带 `at` 时间戳，便于算间隔
+
+补齐"AI 无法直接触及"的一条通道：行情 / 推送 / 进度 / 协作光标。
+
+### 新增脚本
+
+- `scripts/ws-fixture.mjs` —— 本地 WS 测试服务器（手写握手 + 帧发送，零依赖）
+  用于自验离线验证 ws 插件
+
+### 质量
+
+- 自验 138 → **139 项**（+ws 采集 4 帧并解析 JSON）
+- 单元测试 154；CI smoke 17；插件 18 → 19
+
 ## 0.11.0
 
 十一期：`form` 通用表单提交插件（17 → 18）。

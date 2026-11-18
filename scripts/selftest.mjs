@@ -64,7 +64,7 @@ check('init 安装内置插件', initJ?.ok === true && initJ.installed.length >=
 check('init 播种模板', initJ?.templates >= 3, `templates=${initJ?.templates}`);
 
 const list = json(run(['list', '--json']));
-check('list 返回 18 个内置插件', Array.isArray(list) && list.length >= 18, `len=${list?.length}`);
+check('list 返回 19 个内置插件', Array.isArray(list) && list.length >= 19, `len=${list?.length}`);
 check('list 含 forum/webpage/weather', ['forum', 'webpage', 'weather'].every((n) => list?.some((p) => p.name === n)));
 
 /* ---------- 2. 自检 ---------- */
@@ -772,6 +772,30 @@ check('form http 模式 POST',
   formHttp?.ok === true && Number(formHttp.data?.status) === 200 &&
   String(formHttp.data?.body?.form?.user || '') === 'demo',
   JSON.stringify({ status: formHttp?.data?.status, form: formHttp?.data?.body?.form })?.slice(0, 140));
+
+/* ---------- 27.7 0.12.0：ws 采集（本地 fixture） ---------- */
+const wsPort = 8300 + Math.floor(Math.random() * 90);
+const wsSrv = spawnSrv(process.execPath, [path.join(ROOT, 'scripts', 'ws-fixture.mjs'), String(wsPort), '5', '150'], {
+  stdio: 'ignore',
+});
+await new Promise((r) => setTimeout(r, 900));
+
+const wsRes = json(run(['run', 'ws', '--params-file', writeJsonFile(HOME, 'ws.json', {
+  url: `ws://127.0.0.1:${wsPort}`,
+  subscribe: { action: 'sub', channel: 'prices' },
+  messages: 4,
+  duration: 10000,
+  idleMs: 4000,
+})], { timeout: 60000 }));
+wsSrv.kill();
+
+check('ws 采集 N 帧并解析 JSON',
+  wsRes?.ok === true &&
+  wsRes.data?.connected === true &&
+  Array.isArray(wsRes.data?.frames) &&
+  wsRes.data.frames.length === 4 &&
+  typeof wsRes.data.frames[1]?.value?.price === 'number',
+  JSON.stringify({ count: wsRes?.data?.count, reason: wsRes?.data?.reason })?.slice(0, 120));
 
 /* ---------- 28. 浏览器复用（同进程两次调用） ---------- */
 try {

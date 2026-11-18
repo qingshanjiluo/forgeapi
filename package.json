@@ -1,6 +1,6 @@
 {
   "name": "forgeapi",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "把网页、公开服务、第三方来源锻造成 AI 能调用的统一接口",
   "type": "module",
   "bin": {

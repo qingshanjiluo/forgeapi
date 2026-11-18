@@ -404,6 +404,28 @@ forge run form -p '{"url":"https://api.site/login","method":"http","fields":[{"s
 **要点**：选择器写多选项更稳（`"#searchInput, input[name=search]"`）；
 提交按钮找不到就去掉 `submit` 走 Enter；正文摘要取"最长的 3 个段落"避开菜单噪声。
 
+## 十四点四、WebSocket 数据流
+
+行情、推送、进度这类实时数据只走 WS，页面里看不到。
+
+```bash
+# 收 5 帧
+forge run ws -p '{"url":"wss://stream.example/feed","messages":5}'
+
+# 先发订阅再收
+forge run ws --params-file w.json
+# w.json: {"url":"wss://...","subscribe":{"action":"subscribe","channel":"prices"},
+#          "messages":10,"duration":15000,"idleMs":5000}
+
+# 带鉴权 / 关键词过滤
+forge run ws -p '{"url":"wss://...","headers":{"authorization":"Bearer ${cred:TOKEN}"},"filter":"BTC","messages":3,"duration":30000}'
+```
+
+三种结束条件谁先到算谁：收满 `messages` / `duration` 到时 / `idleMs` 无新帧。
+输出 `frames[]` 带 `at` 时间戳，可算帧间隔。
+
+**订阅格式**：浏览器 DevTools → Network → WS → 看客户端发了什么帧，照抄进 `subscribe`。
+
 ## 十四点五、从远端装模板
 
 模板库有 9 个包发布在 GitHub Release，换台机器也能一键装。
