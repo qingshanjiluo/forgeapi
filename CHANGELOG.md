@@ -1,5 +1,46 @@
 # CHANGELOG
 
+## 0.15.0
+
+十五期：知识与金融数据面补齐 —— 5 个新插件（21 → 26）+ 3 处引擎级修复。
+
+### 新增插件（均带 skill.md，逐一实测）
+
+| 插件 | 通道与实测 |
+| --- | --- |
+| `wiki` | 维基官方 API 四模式 search / summary（REST）/ sections / full；实测 465~637ms，404 带 lang 提示 |
+| `baike` | 百度百科 openapi 200 / 13 个信息框字段（剥 sup、a 标签）+ render 取正文目录；裸 fetch 403 记档 |
+| `websearch` | DDG（202 挑战 ×3 重试 + lite 兜底，相关度 100%）+ Bing RSS（89~90%）+ Google News RSS（100%）+ 搜狗 |
+| `quote` | 腾讯 qt.gtimg.cn fetch 直达 589ms（GBK + `~` 60 字段）；新浪/东财 fetch ECONNRESET → 渲染兜底 |
+| `guba` | 东财股吧（「身份核实」滑块识别 + 重试 + 如实报错）+ 淘股吧等价通道（行情块 + 讨论流，无验证码） |
+
+`guba` 默认 `source=auto`：先东财，被风控拦则 warn 后自动切淘股吧，最终仍 `ok:true`。
+淘股吧通道额外返回 `quote`（价格/涨跌/昨收今开/高低/量额/换手/市值，实测 茅台 1485.75 +1.75%）。
+
+### 引擎级修复
+
+1. **`-p k=v` 逗号切分**：`s.split(",")` 把 `engines=ddg,bing` 切成 `engines=ddg` 并静默丢掉 `bing`。
+   改为只在「逗号后紧跟 `key=`」处切：`s.split(/,(?=[A-Za-z_][\w-]*=)/)`。
+2. **浏览器池 60s idle 误回收**：长任务（东财重试 30s+ 再切淘股吧，全程 69.75s）中途被 idle 回收，
+   `page.goto` 报 `Target page, context or browser has been closed`。三层修法：
+   `getPage()` 每次刷新 idle + `markBrowserActive()`；idle 到期时 `activeUsers > 0` 只顺延不回收；
+   `close()` 释放时 `markBrowserReleased()`。
+3. **guba 字段正则**：涨跌改 `￥[\d.]+\s+([-+][\d.]+)\s+\(`（页面形如 `￥1485.75 +25.54 (+1.75%)`）；
+   帖子时间加 `\b` 边界（`4:49:12` 这类 1~2 位小时不再被从任意数字对切）。
+
+### 质量
+
+- 插件 21 → **26**（语法门禁 25/25 个 .mjs + 声明式）
+- 单元测试 154；CI smoke 17；自验 **143 项全过**
+
+### 已知边界（记档，别再走）
+
+- 东财股吧 SSR 遇「身份核实」滑块（高频触发）——不做打码，如实报错返回
+- `gbapi.eastmoney.com` Articlelist：`600519`/`sh600519`/`1.600519`/`0.600519` × 3 base 共 12 组 JSONP 全空
+- 雪球个股页撞滑块验证；个股新闻走 `websearch engines=google`
+- Google web 搜索本机返回拦截页（h3=0）；走 `news.google.com/rss/search`
+- 淘股吧帖子详情页 302 到登录；列表 + 行情 + 摘要可读
+
 ## 0.14.1
 
 修 0.14.0 遗留：控制台「工作流」页签的候选列表是空的。

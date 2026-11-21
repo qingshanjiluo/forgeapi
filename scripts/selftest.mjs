@@ -64,7 +64,7 @@ check('init 安装内置插件', initJ?.ok === true && initJ.installed.length >=
 check('init 播种模板', initJ?.templates >= 3, `templates=${initJ?.templates}`);
 
 const list = json(run(['list', '--json']));
-check('list 返回 21 个内置插件', Array.isArray(list) && list.length >= 21, `len=${list?.length}`);
+check('list 返回 26 个内置插件', Array.isArray(list) && list.length >= 26, `len=${list?.length}`);
 check('list 含 forum/webpage/weather', ['forum', 'webpage', 'weather'].every((n) => list?.some((p) => p.name === n)));
 
 /* ---------- 2. 自检 ---------- */

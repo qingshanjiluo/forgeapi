@@ -56,8 +56,10 @@ function parseParams(raw?: string): Record<string, unknown> {
   if (!s) return {};
   if (s.startsWith('{') || s.startsWith('[')) return JSON.parse(s);
   // k=v,k2=v2 形式
+  // 只在「逗号后紧跟 key=」处切，避免把 a=1,b 这类值里的逗号切断
+  // （如 engines=ddg,bing 会被旧的 s.split(',') 切成 engines=ddg 并丢掉 bing）
   const out: Record<string, unknown> = {};
-  for (const pair of s.split(',')) {
+  for (const pair of s.split(/,(?=[A-Za-z_][\w-]*=)/)) {
     const idx = pair.indexOf('=');
     if (idx < 0) continue;
     const k = pair.slice(0, idx).trim();

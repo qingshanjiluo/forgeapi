@@ -5,7 +5,7 @@ import type { Browser, BrowserContext, Page } from 'playwright';
 import type { ForgeConfig, SessionStep, FieldRule, ExtractRule, WorkspacePaths } from './types.js';
 import { extractFromHtml, interpolate } from './extract.js';
 import { readJson, writeJson } from './workspace.js';
-import { newPooledContext, disposePool } from './browserpool.js';
+import { newPooledContext, disposePool, touchBrowserIdle, markBrowserActive, markBrowserReleased } from './browserpool.js';
 
 export interface BrowserApi {
   /** 获取（惰性启动）页面；同一插件复用同一 context */
@@ -36,6 +36,7 @@ export function createBrowserApi(deps: BrowserDeps): BrowserApi {
   let browser: Browser | null = null;
   let context: BrowserContext | null = null;
   let page: Page | null = null;
+  let holding = false;
   const cookieFile = path.join(deps.dataDir, 'cookies.json');
 
   const getBrowser = async (): Promise<Browser> => {
@@ -57,8 +58,13 @@ export function createBrowserApi(deps: BrowserDeps): BrowserApi {
   };
 
   const getPage = async (): Promise<Page> => {
+    // 长任务（如 guba 东财重试 30s+ 再切淘股吧）撞上 60s idle 回收会让 goto 报
+    // "Target page, context or browser has been closed" —— 所以拿页面时标记活跃 + 刷新 idle
+    if (!holding) { holding = true; markBrowserActive(); }
+    touchBrowserIdle();
     if (page && !page.isClosed()) return page;
     await getBrowser();
+    touchBrowserIdle();
     page = await context!.newPage();
     page.setDefaultTimeout(deps.config.browser.timeout);
     return page;
@@ -305,6 +311,7 @@ const fetchExtract = async (url: string, fields: FieldRule[], opts: { root?: str
       try { if (page && !page.isClosed()) await page.close(); } catch { /* ignore */ }
       try { if (context) await context.close(); } catch { /* ignore */ }
       page = null; context = null; browser = null;
+      if (holding) { holding = false; markBrowserReleased(); }
     },
     /** 关闭整个浏览器池（进程退出或显式清理时用） */
     closeBrowser: async () => { await disposePool(); },

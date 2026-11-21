@@ -18,6 +18,8 @@ export interface PooledBrowser {
 const registry = new Map<string, Browser>();
 const launching = new Map<string, Promise<Browser>>();
 let idleTimer: NodeJS.Timeout | null = null;
+/** 活跃的 BrowserApi 实例数：>0 时 idle 到期只顺延、不回收 */
+let activeUsers = 0;
 
 /** 空闲多久后自动关闭浏览器（0 = 不自动关闭） */
 const IDLE_MS = Number(process.env.FORGE_BROWSER_IDLE_MS ?? 60_000);
@@ -97,8 +99,27 @@ export async function newPooledContext(cfg: ForgeConfig): Promise<{ browser: Bro
 function touchIdle(): void {
   if (!IDLE_MS || IDLE_MS <= 0) return;
   if (idleTimer) clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => { void disposePool(); }, IDLE_MS);
+  idleTimer = setTimeout(() => {
+    // 有插件还拿着 context（哪怕正在 40s 的 goto 中）→ 只顺延，不回收
+    if (activeUsers > 0) { touchIdle(); return; }
+    void disposePool();
+  }, IDLE_MS);
   idleTimer.unref?.();
+}
+
+/** 刷新空闲计时：任何一次拿页面/拿 context 都应调用，防止长任务中途被 idle 回收 */
+export { touchIdle as touchBrowserIdle };
+
+/** 有 BrowserApi 开始持有浏览器 */
+export function markBrowserActive(): void {
+  activeUsers++;
+  touchIdle();
+}
+
+/** 有 BrowserApi 释放（close()） */
+export function markBrowserReleased(): void {
+  activeUsers = Math.max(0, activeUsers - 1);
+  touchIdle();
 }
 
 export async function disposePool(): Promise<void> {

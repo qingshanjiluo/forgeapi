@@ -77,7 +77,7 @@ node dist/cli/index.js run weather -p '{"city":"上海","days":2}'
 ```bash
 npm link
 forge doctor                          # 环境自检
-forge list                            # 21 个内置插件
+forge list                            # 26 个内置插件
 ```
 
 工作区默认在 `~/.forgeapi`，可用 `FORGE_HOME` 覆盖：
@@ -98,7 +98,7 @@ forge list                            # 21 个内置插件
 
 ---
 
-## 21 个内置插件
+## 26 个内置插件
 
 `forge init` 后即可用。全部**免密钥**，除 GitHub 有未认证限流。
 
@@ -124,6 +124,11 @@ forge list                            # 21 个内置插件
 | `form` | 通用表单提交与交互（填字段 → 提交 → 提取） | `url`, `fields`, `submit`, `waitFor`, `extract`, `method` | 浏览器/HTTP |
 | `ws` | WebSocket 采集（订阅 + 收 N 帧） | `url`, `subscribe`, `messages`, `duration`, `filter`, `headers` | 网络 |
 | `csv` | CSV/TSV 读取 → JSON（RFC 4180） | `file`/`url`, `delimiter`, `header`, `inferTypes`, `limit` | 本地 |
+| `wiki` | 维基百科（search/summary/sections/full，多语） | `action`, `title`/`query`, `lang`, `limit` | 网络 |
+| `baike` | 百度百科（openapi 信息框 + render 正文） | `key`, `fieldsOnly`, `render` | 网络/浏览器 |
+| `websearch` | 多引擎搜索（DDG / Bing RSS / Google News / 搜狗） | `query`, `engines`, `limit`, `dedupe` | 网络 |
+| `quote` | 行情快照（腾讯 fetch 直达，A股/港股/美股） | `symbols`, `source`, `fields`, `sorted` | 网络 |
+| `guba` | 股票论坛（东财股吧 + 淘股吧 auto 切换） | `symbol`, `source`, `tab`, `limit`, `includeBody` | 浏览器 |
 
 每个插件都带 `skill.md`，`forge skill <name>` 可读，MCP 里是 `forge://plugin/<name>/skill` 资源。
 
@@ -726,7 +731,7 @@ npm pack                                  # → forgeapi-0.7.1.tgz（149 文件 
 mkdir /tmp/t && cd /tmp/t && npm init -y
 npm install /path/to/forgeapi-0.7.1.tgz
 npx forge --version                       # 0.7.1
-npx forge init                            # 21 插件 + 9 模板
+npx forge init                            # 26 插件 + 9 模板
 npx forge mcp --list                      # 16 工具（13 插件 + 3 子命令）
 ```
 
