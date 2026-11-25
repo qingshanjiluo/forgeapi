@@ -3,6 +3,7 @@
 > 把网页、公开服务、第三方来源，锻造成 AI 能直接调用的统一接口。
 
 [![CI](https://github.com/qingshanjiluo/forgeapi/actions/workflows/ci.yml/badge.svg)](https://github.com/qingshanjiluo/forgeapi/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/badge/npm-forgeapi-blue)](https://www.npmjs.com/package/forgeapi)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 ![node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
 
@@ -22,7 +23,7 @@ forge mcp                      # 挂到 AI 客户端
 
 - [它解决什么问题](#它解决什么问题)
 - [30 秒上手](#30-秒上手)
-- [13 个内置插件](#13-个内置插件)
+- [26 个内置插件](#26-个内置插件)
 - [9 个模板](#9-个模板)
 - [数据获取方式（五种通道）](#数据获取方式五种通道)
 - [CLI 全命令](#cli-全命令)
@@ -70,7 +71,16 @@ node dist/cli/index.js init
 
 # 3) 试一把
 node dist/cli/index.js run weather -p '{"city":"上海","days":2}'
+
+# 4) 可选：开机自动起 Web 控制台（删启动文件夹里的 forgeapi-serve.vbs 即取消）
+node dist/cli/index.js install-startup
+node dist/cli/index.js install-startup status
+node dist/cli/index.js install-startup uninstall
 ```
+
+跨平台实现：Windows 启动文件夹 `.vbs`（wscript 无窗口）、macOS LaunchAgent、Linux autostart。
+命令行用「node 绝对路径 + CLI 绝对路径」，没 `npm link` 也能跑；stdout/stderr 落
+`~/.forgeapi/logs/serve-startup.log`。
 
 可选用 `npm link` 后直接敲 `forge`：
 
@@ -532,6 +542,7 @@ cp -r skills/forgeapi ~/.claude/skills/forgeapi
 
 ```bash
 forge serve                 # http://127.0.0.1:7842
+forge install-startup        # 开机自启（删启动文件夹 .vbs 即取消）
 curl http://127.0.0.1:7842/api/openapi.json   # OpenAPI 3.0.3
 ```
 
@@ -692,7 +703,7 @@ CLI (src/cli)              commander 命令表、argv 重写、参数解析
 
 MCP (src/mcp)              JSON-RPC 2.0：tools / resources / prompts
 Server (src/server)        REST + OpenAPI + 内嵌 Web 控制台
-plugins/builtin            13 个内置插件
+plugins/builtin            26 个内置插件
 templates                  9 个模板 + registry.json
 examples                   3 个工作流示例
 skills/forgeapi            可分发的 Skill 包
@@ -720,7 +731,7 @@ npm run selftest   # 端到端自验（135 项）
            / 完整性 / diff / 签名 / pipeline / 批量 / 新四插件
 ```
 
-自验跑真实的网络与真实浏览器，覆盖：13 插件执行、模板安装、凭据加密与隔离、
+自验跑真实的网络与真实浏览器（149 项），覆盖：26 插件执行、模板安装、凭据加密与隔离、
 MCP 协议六环节、批量汇总、完整性篡改检测、伪造签名识别、cron 解析、
 工作流执行与条件跳过、浏览器池加速、截图/PDF/页面画像/站点地图。
 
@@ -732,7 +743,7 @@ mkdir /tmp/t && cd /tmp/t && npm init -y
 npm install /path/to/forgeapi-0.7.1.tgz
 npx forge --version                       # 0.7.1
 npx forge init                            # 26 插件 + 9 模板
-npx forge mcp --list                      # 16 工具（13 插件 + 3 子命令）
+npx forge mcp --list                      # 29 工具（26 插件 + 3 子命令）
 ```
 
 包内含：`dist` / `plugins` / `templates` / `examples` / `docs` / `skills` / `scripts`

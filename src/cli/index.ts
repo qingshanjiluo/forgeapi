@@ -1186,6 +1186,31 @@ program
     await startServer({ paths, host, port, logger: logger() });
   });
 
+/* =================== install-startup =================== */
+program
+  .command('install-startup [action]')
+  .description('开机自启管理：install（默认）= 开机自动 forge serve；status；uninstall')
+  .option('--port <p>', '自启时使用的端口（默认取 config.server.port）')
+  .action(async (action: string, opts) => {
+    const cfg = loadConfig(paths);
+    const port = Number(opts.port || cfg.server.port || 7777);
+    const { installStartup, uninstallStartup, startupStatus, setStartupPaths, startupFile } = await import('../core/startup.js');
+    setStartupPaths(paths);
+    const act = String(action || 'install');
+
+    if (act === 'uninstall' || act === 'remove') {
+      const r = uninstallStartup();
+      finish(true, { ok: true, ...r, hint: r.alreadyAbsent ? '未安装过，无需取消' : '已取消开机自启' });
+      return;
+    }
+    if (act === 'status') {
+      finish(true, { ok: true, ...startupStatus(port), file: startupFile() });
+      return;
+    }
+    const t = installStartup(port);
+    finish(true, { ok: true, ...t, platform: process.platform, hint: '删除该文件即取消开机自启' });
+  });
+
 /* =================== doctor =================== */
 program
   .command('doctor')

@@ -1,5 +1,38 @@
 # CHANGELOG
 
+## 0.16.0
+
+十六期：开机自启 + skill 更新（26 插件描述、按场景选插件表）。
+
+### install-startup
+
+跨平台开机自启：`forge install-startup [status|uninstall]`。
+
+- Windows：启动文件夹放 `.vbs`，wscript 无窗口拉 `forge serve`；stdout/stderr 重定向到 `~/.forgeapi/logs/serve-startup.log`
+- macOS：`~/Library/LaunchAgents/com.forgeapi.serve.plist` + launchctl（`KeepAlive` 挂了自动拉起）
+- Linux：`~/.config/autostart/forgeapi.desktop`
+
+实测要点（都踩过）：
+
+1. **node 路径**：`process.execPath` 本机指向 `Python313\Lib\site-packages\nodejs_wheel\node.exe`，
+   卸载 Python 就断 → 改 `where node` 并跳过 `nodejs_wheel`/`Python\d+`，取 `C:\Program Files\nodejs\node.exe`
+2. **中文路径**：vbs 被 wscript 按系统 ANSI 解析，UTF-8 中文必乱码起不来 → `asciiSafe()` 三级兜底：
+   原生 ASCII → COM `FileSystemObject.ShortPath` → 建 `C:\ProgramData\forgeapi-link` junction（卷禁 8.3 时唯一出路）；
+   vbs 注释也改纯 ASCII
+3. 自启项用「node 绝对路径 + CLI 绝对路径」而非 `forge` 命令，没全局安装也能跑
+
+实测：`wscript.exe forgeapi-serve.vbs` → 6s → `GET /api/health` 200；`uninstall` 删文件 + `alreadyAbsent` 幂等。
+
+### skill 更新
+
+`skills/forgeapi/SKILL.md`：frontmatter 扩到 26 插件、加「按场景选插件」决策表、失败处置表补
+ECONNRESET / 身份核实 / Google 拦截页 / 浏览器池已修 / 自启命令；已同步 `~/.dsh/skills/forgeapi/`。
+
+### 质量
+
+- 插件 26；自验 143 → **149 项**（+install-startup 六条：status 默认未装 / 落 vbs / vbs 纯 ASCII / vbs 指向稳定 node / wscript 模拟开机 health / 卸载）
+- 单测 154；ci-smoke 17；语法门禁 25/25
+
 ## 0.15.0
 
 十五期：知识与金融数据面补齐 —— 5 个新插件（21 → 26）+ 3 处引擎级修复。

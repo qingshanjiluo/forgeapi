@@ -866,7 +866,70 @@ try {
     `status=${e.status} msg=${e.message?.slice(0, 160)} out=${String(e.stdout || '').slice(-200)} err=${String(e.stderr || '').slice(-200)}`);
 }
 
-/* ---------- 汇总 ---------- */
+/* ---------- 汇总（即时重算，含 install-startup 段新增断言） ---------- */
+
+/* ---------- 29. 0.16.0：开机自启 install-startup（临时 APPDATA 不碰真实启动项） ---------- */
+if (process.platform === 'win32') {
+  const fakeAppData = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-startup-'));
+  const startupEnv = { ...env, APPDATA: fakeAppData };
+  const runS = (args) => {
+    try {
+      const out = execFileSync(process.execPath, [CLI, ...args], {
+        encoding: 'utf8', env: startupEnv, timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      return { ok: true, out: String(out) };
+    } catch (e) {
+      return { ok: false, out: String(e.stdout ?? '') + String(e.stderr ?? '') };
+    }
+  };
+  const st0 = runS(['install-startup', 'status']);
+  let st0j = null;
+  try { st0j = JSON.parse(st0.out.slice(st0.out.indexOf('{'))); } catch { /* ignore */ }
+  check('install-startup status 默认未装', st0j?.ok === true && st0j.installed === false, st0.out.slice(0, 120));
+
+  const st1 = runS(['install-startup']);
+  let st1j = null;
+  try { st1j = JSON.parse(st1.out.slice(st1.out.indexOf('{'))); } catch { /* ignore */ }
+  const vbsOk = st1j?.installed === true && st1j.file && fs.existsSync(st1j.file);
+  check('install-startup 落 vbs', vbsOk, st1.out.slice(0, 200));
+  if (vbsOk) {
+    // wscript 按 ANSI 读脚本，vbs 必须纯 ASCII 否则语法错起不来
+    const raw = fs.readFileSync(st1j.file);
+    const nonAscii = [...raw].filter((b) => b > 127).length;
+    check('vbs 纯 ASCII（中文路径走短路径/junction）', nonAscii === 0, `非ASCII=${nonAscii}`);
+    check('vbs 指向稳定 node（非 python wheel）', /nodejs\\node\.exe/i.test(st1j.command || ''), (st1j.command || '').slice(0, 140));
+
+    // 模拟开机：wscript 执行，等 health
+    const selfPort = 7993;
+    const st2 = runS(['install-startup', '--port', String(selfPort)]);
+    let st2j = null;
+    try { st2j = JSON.parse(st2.out.slice(st2.out.indexOf('{'))); } catch { /* ignore */ }
+    let served = false;
+    if (st2j?.file && fs.existsSync(st2j.file)) {
+      execFileSync('wscript.exe', [st2j.file], { stdio: 'ignore' });
+      for (let i = 0; i < 24 && !served; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        try {
+          const h = await fetch(`http://127.0.0.1:${selfPort}/api/health`, { signal: AbortSignal.timeout(1500) });
+          served = h.ok;
+        } catch { /* 等 */ }
+      }
+      check('wscript 模拟开机 → health ok', served, `port=${selfPort}`);
+      // 收尾：杀服务 + 卸自启
+      try {
+        execFileSync('powershell.exe', ['-NoProfile', '-Command', `(Get-NetTCPConnection -LocalPort ${selfPort} -State Listen -ErrorAction SilentlyContinue).OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }`], { stdio: 'ignore' });
+      } catch { /* ignore */ }
+    }
+    const un = runS(['install-startup', 'uninstall']);
+    let unj = null;
+    try { unj = JSON.parse(un.out.slice(un.out.indexOf('{'))); } catch { /* ignore */ }
+    check('uninstall 删掉 vbs', unj?.removed === true && !fs.existsSync(st1j.file), un.out.slice(0, 160));
+  }
+  fs.rmSync(fakeAppData, { recursive: true, force: true });
+} else {
+  check('install-startup（本平台，非 win32 跳过）', true, '');
+}
+
 const pass = results.filter((r) => r.pass).length;
 const fail = results.length - pass;
 console.log(`\n========== ${pass}/${results.length} PASS, ${fail} FAIL ==========`);

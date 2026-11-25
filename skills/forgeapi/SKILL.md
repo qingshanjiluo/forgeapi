@@ -1,6 +1,6 @@
 ---
 name: forgeapi
-description: 用本地 forge CLI 把网页、公开服务、第三方来源变成结构化数据。当需要抓网页字段、多源搜索聚合、RSS、GitHub 仓库信息、论坛会话、天气汇率翻译维基、网页截图/PDF/元信息、站点地图发现，或要把多个数据源串成一条管线时使用。关键词：forge、抓取、聚合、网页提取、数据管线、截图、PDF、sitemap。
+description: 用本地 forge CLI 把网页、公开服务、第三方来源变成结构化数据。抓网页字段、多源搜索聚合（含 DDG/Bing/Google News 多引擎 websearch）、RSS、GitHub、论坛会话、维基百科与百度百科词条、行情快照与股吧讨论（quote/guba）、天气汇率翻译、截图/PDF/元信息、sitemap 与全站爬取、表单提交、WebSocket 采集、CSV 读取与表达式计算，并串成管线时使用。关键词：forge、抓取、聚合、爬取、网页提取、搜索、百科、行情、股价、股吧、论坛、数据管线、截图、PDF、sitemap、ws、csv。
 ---
 
 # ForgeAPI 执行手册
@@ -13,134 +13,75 @@ description: 用本地 forge CLI 把网页、公开服务、第三方来源变�
 1. 所有调用输出 JSON 到 stdout，日志在 stderr。**只解析 stdout**。
 2. 返回 `{ok, data, error, meta, ms}`；`ok=false` 时读 `error`，退出码 1。
 3. 优先用 `--params-file` 传参数（Windows 上 shell 引号会破坏 JSON）。
-4. 参数不确定时先 `forge schema <plugin>`，别猜。
-5. 规则类任务先 `forge skill <plugin>` 读该插件的完整说明书。
-
-## 通用形态
-
-```bash
-forge run <plugin> --params-file p.json     # 单次执行
-forge run <plugin> -p '{"k":"v"}'           # 内联（简单参数）
-forge <plugin> [sub] --params-file p.json   # 子命令直达
-```
+4. `-p k=v,k2=v2` 只在「逗号后紧跟 `key=`」处切分，**值里的逗号安全**（0.15.0 修复）。
+5. 参数不确定先 `forge schema <plugin>`；规则类任务先 `forge skill <plugin>`。
+6. **失败如实上报**：插件被风控/验证码拦时返回 `ok:false` + 原因，绝不静默返回空数组。
 
 ## 先探能力
 
 ```bash
-forge list --json                 # 有哪些插件（含 enabled 状态）
-forge schema <plugin>             # 参数定义（JSON Schema）
-forge skill <plugin>              # 完整说明书（Markdown）
-forge info <plugin>               # 详情：子命令 / 权限 / 目录
-forge doctor                      # 环境自检（chromium 是否就绪）
+forge list --json                 # 26 个插件（含 enabled）
+forge schema <plugin>             # JSON Schema
+forge skill <plugin>              # 完整说明书
+forge doctor                      # 环境自检（chromium 就绪？）
 ```
 
-需要按场景查配方时，读仓库里的 `docs/DATA-COOKBOOK.md`（按「我要什么」组织，
-含陌生页面侦察、列表抓取、登录站、批量、管线、监控、失败对照）。
+场景配方查 `docs/DATA-COOKBOOK.md`（按「我要什么」组织，17 类）。
 
-## 26 个内置插件（`forge init` 后即可用）
+## 按场景选插件
 
-| 插件 | 用途 | 关键参数 |
+| 场景 | 插件 | 关键参数 |
 | --- | --- | --- |
-| `webpage` | 任意网页按规则抽字段 | `url`, `rule`, `root`, `waitFor` |
-| `blog-list` | 列表页批量抓条目（可翻页） | `url`, `limit`, `pages`, `item`, `title` |
-| `search-aggregate` | HN/Wiki/GitHub/Bing 多源去重 | `query`, `sources`, `limit` |
-| `hn-search` | HN 单源搜索 | `query`, `tags`, `limit` |
-| `rss` | RSS/Atom 解析（单/多 feed） | `url` 或 `urls[]`, `limit` |
-| `github-repo` | 仓库信息/Issue/搜索/README | `repo`, `action`, `query` |
-| `forum` | 论坛登录→板块→列表→详情 | `base`, `action`, `board`, `topic` |
-| `weather` | 天气（Open-Meteo 免密钥） | `city` 或 `lat`+`lon`, `days` |
-| `http-api` | 通用 HTTP/JSON 封装 | `endpoint`, `method`, `query`, `body`, `jsonpath` |
-| `screenshot` | 网页截图（整页/元素/base64） | `url`, `selector`, `fullPage`, `output` |
-| `pdf` | 网页转 PDF | `url`, `format`, `landscape`, `margin` |
-| `page-meta` | 页面画像（OG/Twitter/JSON-LD） | `url`, `includeJsonLd` |
-| `sitemap` | 站点地图解析与 URL 发现 | `url`, `limit`, `since`, `prefix` |
-| `out` | 结果 → CSV/Markdown/列表/TSV | `data`/`file`, `format`, `columns` |
-| `json-query` | 本地 JSON 查询（JSONPath+投影+排序） | `file`/`json`, `path`, `fields`, `sortBy` |
-| `pdf-text` | PDF 文本提取（按页） | `file`/`url`, `pages`, `maxPages` |
-| `crawl` | 站点爬取（入口 + 深度/限页/robots） | `url`, `maxDepth`, `maxPages`, `urlPattern` |
-| `form` | 通用表单提交（填字段 → 提交 → 提取） | `url`, `fields`, `submit`, `waitFor`, `extract` |
-| `ws` | WebSocket 采集（订阅 + 收 N 帧） | `url`, `subscribe`, `messages`, `duration`, `filter` |
-| `csv` | CSV/TSV 读取 → JSON | `file`/`url`, `delimiter`, `header`, `inferTypes` |
-| `wiki` | 维基百科四模式（search/summary/sections/full） | `action`, `title`, `lang` |
-| `baike` | 百度百科（信息框 openapi + render 正文） | `key`, `render` |
-| `websearch` | 多引擎搜索（DDG/Bing/Google News/搜狗） | `query`, `engines` |
-| `quote` | 行情快照（腾讯 fetch 直达；新浪/东财渲染兜底） | `symbols`, `source` |
-| `guba` | 股票论坛（东财 + 淘股吧 auto 切换，带行情块） | `symbol`, `source` |
-| `transform` | 字段级表达式计算（换算/拼接/条件） | `data`/`file`, `expr` |
+| 抓一页字段 | `webpage` / `page-meta` | `url`, `rule`, `root` |
+| 列表批量（可翻页） | `blog-list` | `url`, `limit`, `pages` |
+| 从入口爬 N 层 | `crawl` | `url`, `maxDepth`, `maxPages`, `urlPattern`, `render` |
+| 搜索（多引擎） | `websearch` | `query`, `engines`(ddg,bing,google,sogou) |
+| 垂直源聚合 | `search-aggregate` / `hn-search` | `query`, `sources` |
+| 维基百科 | `wiki` | `action`(search/summary/sections/full), `title`, `lang` |
+| 百度百科 | `baike` | `key`, `render`(正文) |
+| 行情快照 | `quote` | `symbols`(600519,00700,AAPL), `source` |
+| 股票论坛 | `guba` | `symbol`, `source`(guba/tgb/auto), `tab` |
+| 论坛登录流程 | `forum` | `base`, `action`(login/list/topic) |
+| 表单/搜索框提交 | `form` | `url`, `fields`, `submit`, `waitFor` |
+| RSS | `rss` | `url` 或 `urls[]` |
+| 通用 HTTP | `http-api` | `endpoint`, `method`, `jsonpath` |
+| 天气/汇率/翻译 | `weather` / 模板 | `city` / `from`,`to` / `text` |
+| 站点地图 | `sitemap` | `url`, `since`, `prefix` |
+| 截图/PDF | `screenshot` / `pdf` | `url`, `fullPage`, `format` |
+| WebSocket 流 | `ws` | `url`, `subscribe`, `messages`, `filter` |
+| CSV 读入 | `csv` | `file`/`url`, `delimiter` |
+| 读 PDF 文本 | `pdf-text` | `file`/`url`, `pages` |
+| 算字段 | `transform` | `data`, `expr`(用 `it.` 与 `F.`) |
+| 出表格 | `out` | `data`, `format`(markdown/csv/tsv) |
+| 过滤/排序 JSON | `json-query` | `path`, `fields`, `sortBy` |
 
-**典型组合**：抓完数据要贴文档 →
+## 高频命令
+
 ```bash
-forge run search-aggregate -p '{"query":"X","limit":5}' > r.json
-forge run out -p '{"file":"r.json","format":"markdown"}'
-```
+# 抓
+forge run webpage --params-file p.json
+forge run crawl -p "url=https://site.com,maxDepth=2,maxPages=20"
+forge run wiki -p "action=summary,title=贵州茅台"
+forge run baike -p "key=拼多多"
+forge run websearch -p "query=贵州茅台 股价,engines=google,ddg,limit=3"
 
-## 9 个模板（需 `forge template install <name>`）
+# 行情与论坛（guba 的 source=auto：东财被风控自动切淘股吧）
+forge run quote -p "symbols=600519,300750,00700"
+forge run guba -p "symbol=600519,limit=8"
 
-| 模板 | 用途 |
-| --- | --- |
-| `exchange-rate` | 汇率（ECB 数据）`from`/`to`/`amount` |
-| `translate` | 翻译（Google + MyMemory 双源）`text`/`from`/`to` |
-| `wiki-summary` | 维基摘要 `title`/`lang`/`sentences` |
-| `news-digest` | 多源新闻聚合+关键词过滤 `keyword`/`limit` |
-| `price-compare` | 比价骨架（站点配置驱动）`query`/`sites`/`demos` |
-| `github-trending` | GitHub 趋势榜 `language`/`since`/`limit` |
-| `demo-hn` | HN 头条（声明式聚合示例） |
-| `demo-forum-pack` | 论坛登录流（声明式 flow 示例） |
-| `demo-weather-service` | 公开服务包装示例 |
-
-先 `forge template list` 看本地、`forge template remote` 看远端索引、`forge template install <name>` 装。
-
-## 任务映射
-
-**要某页的字段**
-```bash
-# 1) 先看页面有什么
-forge run page-meta --params-file <(echo '{"url":"TARGET"}')
-# 2) 用默认字段抓
-forge run webpage --params-file <(echo '{"url":"TARGET"}')
-# 3) 字段不够 → 写规则再抓
-forge rule webpage site --set 'fields:
-  - {name: 标题, selector: "h1"}
-  - {name: 价格, selector: ".price", type: number}'
-forge run webpage --params-file <(echo '{"url":"TARGET","rule":"site"}')
-```
-
-**多源搜一个词**
-```bash
-forge run search-aggregate --params-file <(echo '{"query":"X","sources":"hn,wiki,github","limit":10}')
-```
-
-**抓一个站的最新内容**
-```bash
-forge run sitemap --params-file <(echo '{"url":"https://site.com","since":"2026-11-01","limit":50}')
-forge run rss --params-file <(echo '{"url":"https://site.com/feed"}')
-```
-
-**论坛/需要登录的站**
-```bash
-forge run forum --params-file <(echo '{"base":"https://forum.example.com","action":"login"}')
-forge run forum --params-file <(echo '{"base":"https://forum.example.com","action":"list","board":"/b/x"}')
-```
-登录态落 cookie，后续调用自动复用。
-
-**存证 / 归档**
-```bash
-forge run screenshot --params-file <(echo '{"url":"U","fullPage":true}')
-forge run pdf --params-file <(echo '{"url":"U","format":"A4"}')
+# 算 + 出表
+forge run transform --params-file t.json   # expr 如 "F.round(it.price/7.2,2)"
+forge run out -p "format=markdown"
 ```
 
 ## 批量与管线
 
 ```bash
-# 批量：任务文件（JSONL）
 forge batch tasks.jsonl -c 4 -r 3 --stream
-
-# 管线：上一步输出喂下一步
+forge pipeline pl.yaml --dry-run     # 先看计划
 forge pipeline pl.yaml -p 'query=X'
-forge pipeline pl.yaml --dry-run   # 先看计划
 ```
 
-管线模板：
 ```yaml
 name: search-then-read
 onError: continue
@@ -162,24 +103,38 @@ output: { total: "${steps.search.data.total}", pages: "${steps.detail.items}" }
 
 | 现象 | 处置 |
 | --- | --- |
-| `error` 含 `playwright` / `Chromium` | 网页类不可用 → 换 `http-api` / `rss` 直取，或提示用户跑 `npx playwright install chromium` |
-| `GitHub 403 rate limit` | 需 token：`forge config --vault init --password P`; `forge github-repo set-token --params '{"token":"ghp_x"}'`（需先 unlock） |
-| `规则文件未找到` | `forge rule <plugin> <name> --set <yaml>` 先写 |
-| `插件已禁用` | `forge enable <plugin>` |
-| `插件未安装` | `forge init`（装内置）或 `forge install <dir>` |
-| `未在 ... 发现 sitemap` | 换 `rss`、或让用户给具体 sitemap 地址 |
-| schema 不符 | `forge schema <plugin>` 对照参数名与类型 |
+| `ECONNRESET`（新浪/东财/雪球直连） | 代理拒 → 该插件已内置渲染兜底；仍失败则换 `quote source=tencent` 或 `websearch` |
+| `身份核实`/`访问验证`（东财股吧滑块） | 风控间歇，**不做打码** → `guba source=tgb` 换淘股吧，或隔几小时重试 |
+| Google web 返回拦截页 | 已自动走 `news.google.com/rss/search` 等价通道，无需处理 |
+| `Target page, context or browser has been closed` | 浏览器池 idle 已修（0.15.0），升级即可；临时 `FORGE_BROWSER_IDLE_MS=0` 关掉回收 |
+| `playwright` / `Chromium` 缺失 | `npx playwright install chromium` |
+| `GitHub 403 rate limit` | `forge config --vault init --password P` 后 `forge github-repo set-token` |
+| `插件未安装` | `forge init --no-install`（装内置、跳过依赖） |
+| `规则文件未找到` | `forge rule <plugin> <name> --set <yaml>` |
 
-## 验证过的事实
+## 实测事实（2026-11，本机）
 
-- 浏览器进程池复用：首次 ~3-7s，后续 ~0.7s（同进程）
-- `search-aggregate` 三源并发，按标题去重，合并来源集合
-- `screenshot`/`pdf` 落 `~/.forgeapi/data/<plugin>/`，返回绝对路径
-- `sitemap` 支持 `<sitemapindex>` 递归展开与 `.gz`
-- 所有插件调用写日志，`forge log --plugin X --error` 可查历史
+- 26 插件 / 9 模板 / 28 CLI 命令 / 10 页签 Web 控制台 / MCP 三件套
+- 自验 143、单测 154、ci-smoke 17、语法门禁 25/25（`npm run check:plugins`）
+- `quote` 腾讯源 fetch 直达 589ms；`baike` openapi 1.4s 出 13 字段；`wiki` 465~637ms
+- `websearch` 相关度：DDG 100% / Google News 100% / Bing RSS 89% / 搜狗 89%
+- `guba` 淘股吧通道 21s（东财风控重试后 auto 切换），返回行情块 + 讨论流
+- 浏览器池首次 ~3-7s、后续 ~0.7s；idle 60s 自动回收（有活跃任务时只顺延）
+- 走不通的路已记档：东财 `gbapi` Articlelist 12 组 JSONP 全空、雪球撞滑块、
+  淘股吧详情页 302 登录（列表+行情+摘要可读）
+
+## 自启动与安装
+
+```bash
+npm pack && npm i -g ./forgeapi-<ver>.tgz   # 全局装，得到 forge 命令
+npx forgeapi install-startup                 # Windows 开机自启 forge serve
+```
+
+详见 `docs/ARCHITECTURE.md` 与 `README.md`。
 
 ## 不做什么
 
 - 不猜插件参数：先 `schema`
 - 不忽略 `ok=false` 继续往下算
 - 不把 stderr 当结果解析
+- 不对风控/验证码静默降级成空数据
